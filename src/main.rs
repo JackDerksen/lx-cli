@@ -8,7 +8,7 @@ use clap::Parser;
 use std::path::Path;
 
 use cli::Args;
-use formatter::Formatter;
+use formatter::{format_long, format_short};
 use reader::read_directory;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,9 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let entries = read_directory(target_path, args.show_hidden)?;
 
     if args.long {
-        Formatter::format_long(entries);
+        format_long(entries);
     } else {
-        Formatter::format_short(entries);
+        format_short(entries);
     }
 
     Ok(())

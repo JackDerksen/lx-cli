@@ -6,6 +6,6 @@ pub mod reader;
 
 pub use cli::Args;
 pub use file_entry::FileEntry;
-pub use formatter::Formatter;
+pub use formatter::{format_long, format_short};
 pub use icon::FileIcon;
 pub use reader::read_directory;
