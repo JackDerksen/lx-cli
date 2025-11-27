@@ -19,6 +19,7 @@ pub fn read_directory(target_path: &Path) -> io::Result<Vec<FileEntry>> {
             path,
             is_dir,
             is_executable,
+            mode: metadata.permissions().mode(),
         });
     }
 

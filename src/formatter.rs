@@ -175,7 +175,7 @@ impl Formatter {
 
         for entry in all_entries {
             let path_name = entry.path.to_string_lossy();
-            let permissions = "drwxr-xr-x"; // Get from metadata properly
+            let permissions = entry.format_permissions();
             let icon = entry.get_icon();
             let filename = entry.path.file_name().unwrap().to_string_lossy();
             let color = entry.get_color();
