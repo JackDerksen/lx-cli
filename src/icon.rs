@@ -20,7 +20,7 @@ impl FileIcon {
     pub fn get_color(&self) -> Color {
         match self {
             FileIcon::Directory => Color::Blue,
-            FileIcon::Executable => Color::Green,
+            FileIcon::Executable => Color::Red,
             FileIcon::RegularFile => Color::White,
         }
     }
