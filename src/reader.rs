@@ -5,12 +5,24 @@ use std::io;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::Path;
 
-pub fn read_directory(target_path: &Path) -> io::Result<Vec<FileEntry>> {
+pub fn read_directory(target_path: &Path, show_hidden: bool) -> io::Result<Vec<FileEntry>> {
     let mut entries: Vec<FileEntry> = Vec::new();
 
     for entry in fs::read_dir(target_path)? {
         let entry = entry?;
         let path = entry.path();
+
+        // Skip hidden files unless show_hidden is true
+        if !show_hidden {
+            if let Some(filename) = path.file_name() {
+                if let Some(name) = filename.to_str() {
+                    if name.starts_with('.') {
+                        continue;
+                    }
+                }
+            }
+        }
+
         let metadata = entry.metadata()?;
         let is_dir = metadata.is_dir();
         let is_executable = !is_dir && (metadata.permissions().mode() & 0o111) != 0;

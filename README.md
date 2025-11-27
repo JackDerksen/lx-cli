@@ -1,7 +1,6 @@
 # LX: A nicer way to list your files
 
-## Building:
-
+## Building
 First, make sure you have a local bin directory:
 ```
 mkdir ~/.local/bin

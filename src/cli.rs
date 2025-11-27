@@ -9,4 +9,11 @@ pub struct Args {
 
     #[arg(short, long, help = "Use a long listing format")]
     pub long: bool,
+
+    #[arg(
+        short = 'a',
+        long = "all",
+        help = "Show all files, including hidden ones"
+    )]
+    pub show_hidden: bool,
 }

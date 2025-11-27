@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let entries = read_directory(target_path)?;
+    let entries = read_directory(target_path, args.show_hidden)?;
 
     if args.long {
         Formatter::format_long(entries);
