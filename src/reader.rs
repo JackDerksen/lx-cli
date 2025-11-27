@@ -31,6 +31,13 @@ pub fn read_directory(target_path: &Path, show_hidden: bool) -> io::Result<Vec<F
         let uid = metadata.uid();
         let owner = get_username(uid);
 
+        // Get group name
+        let gid = metadata.gid();
+        let group = get_groupname(gid);
+
+        // Get number of hard links
+        let nlink = metadata.nlink();
+
         // Get modification time
         let modified = metadata
             .modified()
@@ -47,6 +54,8 @@ pub fn read_directory(target_path: &Path, show_hidden: bool) -> io::Result<Vec<F
             size,
             modified,
             owner,
+            group,
+            nlink,
         });
     }
 
@@ -69,4 +78,22 @@ fn get_username(uid: u32) -> String {
         }
     }
     uid.to_string()
+}
+
+fn get_groupname(gid: u32) -> String {
+    // Try to get group name from system, fallback to gid
+    #[cfg(unix)]
+    {
+        use std::ffi::CStr;
+        unsafe {
+            let group = libc::getgrgid(gid);
+            if !group.is_null() {
+                let name = CStr::from_ptr((*group).gr_name);
+                if let Ok(name_str) = name.to_str() {
+                    return name_str.to_string();
+                }
+            }
+        }
+    }
+    gid.to_string()
 }

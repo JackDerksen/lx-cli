@@ -13,6 +13,8 @@ pub struct FileEntry {
     pub size: u64,
     pub modified: SystemTime,
     pub owner: String,
+    pub group: String,
+    pub nlink: u64,
 }
 
 impl FileEntry {
