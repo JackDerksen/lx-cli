@@ -2,6 +2,7 @@
 use crate::icon::FileIcon;
 use colored::Color;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 #[derive(Debug)]
 pub struct FileEntry {
@@ -9,6 +10,9 @@ pub struct FileEntry {
     pub is_dir: bool,
     pub is_executable: bool,
     pub mode: u32,
+    pub size: u64,
+    pub modified: SystemTime,
+    pub owner: String,
 }
 
 impl FileEntry {
@@ -65,6 +69,32 @@ impl FileEntry {
             "{}{}{}{}{}{}{}{}{}{}",
             file_type, user_r, user_w, user_x, group_r, group_w, group_x, other_r, other_w, other_x
         )
+    }
+
+    pub fn format_size(&self) -> String {
+        let size = self.size;
+        if size < 1024 {
+            format!("{}B", size)
+        } else if size < 1024 * 1024 {
+            format!("{:.1}K", size as f64 / 1024.0)
+        } else if size < 1024 * 1024 * 1024 {
+            format!("{:.1}M", size as f64 / (1024.0 * 1024.0))
+        } else {
+            format!("{:.1}G", size as f64 / (1024.0 * 1024.0 * 1024.0))
+        }
+    }
+
+    pub fn format_modified(&self) -> String {
+        use std::time::UNIX_EPOCH;
+
+        if let Ok(duration) = self.modified.duration_since(UNIX_EPOCH) {
+            let secs = duration.as_secs();
+            let datetime = chrono::DateTime::from_timestamp(secs as i64, 0)
+                .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+            datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+        } else {
+            "Unknown".to_string()
+        }
     }
 }
 

@@ -163,31 +163,57 @@ impl Formatter {
         all_entries.extend(executables);
         all_entries.extend(regular_files);
 
-        // Calculate padding
-        let mut max_path_width = 0;
-        for entry in &all_entries {
-            let path_name = entry.path.to_string_lossy();
-            if path_name.len() > max_path_width {
-                max_path_width = path_name.len();
-            }
-        }
-        let padded_width = max_path_width + 2;
+        // Calculate column widths for alignment
+        let max_name_width = all_entries
+            .iter()
+            .map(|e| {
+                let filename = e.path.file_name().unwrap().to_string_lossy();
+                UnicodeWidthStr::width(e.get_icon().as_str())
+                    + 1
+                    + UnicodeWidthStr::width(filename.as_ref())
+            })
+            .max()
+            .unwrap_or(0);
 
+        let max_owner_width = all_entries.iter().map(|e| e.owner.len()).max().unwrap_or(0);
+
+        let max_size_width = all_entries
+            .iter()
+            .map(|e| e.format_size().len())
+            .max()
+            .unwrap_or(0);
+
+        // Format: <icon> <name> <owner> <modification datetime> <size> <permissions>
         for entry in all_entries {
-            let path_name = entry.path.to_string_lossy();
-            let permissions = entry.format_permissions();
             let icon = entry.get_icon();
             let filename = entry.path.file_name().unwrap().to_string_lossy();
             let color = entry.get_color();
 
-            let path_column = format!("{:<width$}", path_name, width = padded_width);
+            let name_width = UnicodeWidthStr::width(icon.as_str())
+                + 1
+                + UnicodeWidthStr::width(filename.as_ref());
+            let name_padding = if name_width < max_name_width {
+                max_name_width - name_width
+            } else {
+                0
+            };
+
+            let owner = &entry.owner;
+            let modified = entry.format_modified();
+            let size = entry.format_size();
+            let permissions = entry.format_permissions();
 
             println!(
-                "{}{}  {} {}",
-                path_column,
-                permissions,
+                "{} {}{}  {:<owner_width$}  {}  {:>size_width$}  {}",
                 icon,
-                filename.color(color).bold()
+                filename.color(color).bold(),
+                " ".repeat(name_padding),
+                owner,
+                modified,
+                size,
+                permissions,
+                owner_width = max_owner_width,
+                size_width = max_size_width,
             );
         }
     }
