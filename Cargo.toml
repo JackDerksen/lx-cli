@@ -1,6 +1,6 @@
 [package]
 name = "lx-cli"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 authors = ["Jack Derksen <hello@viis.dev>"]
 description = "A nicer way to list your files ✨"

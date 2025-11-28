@@ -15,6 +15,23 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
         }
     }
 
+    // Sort each file type alphabetically by filename
+    directories.sort_by(|a, b| {
+        let a_name = a.path.file_name().unwrap().to_string_lossy();
+        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        a_name.cmp(&b_name)
+    });
+    executables.sort_by(|a, b| {
+        let a_name = a.path.file_name().unwrap().to_string_lossy();
+        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        a_name.cmp(&b_name)
+    });
+    regular_files.sort_by(|a, b| {
+        let a_name = a.path.file_name().unwrap().to_string_lossy();
+        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        a_name.cmp(&b_name)
+    });
+
     // Combine all entries in type order
     let mut all_entries = Vec::new();
     all_entries.extend(directories);
