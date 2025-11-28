@@ -1,7 +1,20 @@
 [package]
-name = "lx"
+name = "lx-cli"
 version = "0.1.1"
 edition = "2024"
+authors = ["Jack Derksen <hello@viis.dev>"]
+description = "A nicer way to list your files ✨"
+license = "MIT"
+repository = "https://github.com/JackDerksen/lx-cli"
+homepage = "https://github.com/JackDerksen/lx-cli"
+documentation = "https://docs.rs/lx-cli"
+readme = "README.md"
+keywords = ["cli", "ls", "file-listing", "terminal"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "lx"
+path = "src/main.rs"
 
 [dependencies]
 chrono = "0.4.42"

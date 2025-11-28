@@ -1,6 +1,6 @@
 # LX: A nicer way to list your files
 
-A modern, colorful alternative to `ls` with icons and customizable output.
+A modern alternative to `ls` with more readable formatting, colours, icons, and customizable output.
 
 ## Features
 
@@ -12,18 +12,22 @@ A modern, colorful alternative to `ls` with icons and customizable output.
 
 ## Requirements
 
-- Rust (>= 1.56.1)
+- Rust (>= 1.56.1) and Cargo
 - Either a [nerd font](https://www.nerdfonts.com/font-downloads) or a terminal like Ghostty which has nerd font icons pre-installed.
 
-## Building
+## Installation
 
-First, make sure you have a local bin directory:
-```
-mkdir ~/.local/bin
+The easiest way to install `lx` is using Cargo:
+
+```bash
+cargo install lx-cli
 ```
 
-Then build the project and copy the binary to the bin directory:
-```
+Alternatively, you can build it from source:
+
+```bash
+git clone https://github.com/JackDerksen/lx-cli
+cd lx-cli
 cargo build --release
 cp target/release/lx ~/.local/bin/
 ```
@@ -57,7 +61,8 @@ lx /path/to/directory
 
 See `config.example` for all available options.
 
-### Example Configuration
+### Example Configuration 
+### (this is different from default)
 
 ```toml
 [colors]
