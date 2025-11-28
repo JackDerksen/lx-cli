@@ -1,4 +1,5 @@
 mod cli;
+mod config;
 mod file_entry;
 mod formatter;
 mod icon;
@@ -8,11 +9,13 @@ use clap::Parser;
 use std::path::Path;
 
 use cli::Args;
+use config::load_config;
 use formatter::{format_long, format_short};
 use reader::read_directory;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+    let config = load_config();
     let target_path = Path::new(&args.target);
 
     if !target_path.exists() {
@@ -26,9 +29,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let entries = read_directory(target_path, args.show_hidden)?;
 
     if args.long {
-        format_long(entries);
+        format_long(entries, &config);
     } else {
-        format_short(entries);
+        format_short(entries, &config);
     }
 
     Ok(())

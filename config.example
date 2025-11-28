@@ -1,0 +1,27 @@
+# Example configuration file for lx
+# Place this file at: ~/.config/lx/config
+
+[colors]
+# Available colors:
+# black, red, green, yellow, blue, magenta, cyan, white
+# bright_black, bright_red, bright_green, bright_yellow
+# bright_blue, bright_magenta, bright_cyan, bright_white
+
+# Color for directories
+directory = "blue"
+
+# Color for executable files
+executable = "green"
+
+# Color for regular files
+regular = "white"
+
+[display]
+# Number of spaces between columns (default: 2)
+column_spacing = 2
+
+# Maximum number of rows to display before wrapping to next column
+# Only applies to short format (not -l). Set to 0 for no limit (default: 0)
+# Note that this can look weird if you have a lot of files in a directory with
+a small max_rows value. I think 8 is a pretty safe balance.
+max_rows = 0

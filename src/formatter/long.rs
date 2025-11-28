@@ -1,7 +1,8 @@
+use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
 use colored::Colorize;
 
-pub fn format_long(entries: Vec<FileEntry>) {
+pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
     let mut directories: Vec<FileEntry> = Vec::new();
     let mut executables: Vec<FileEntry> = Vec::new();
     let mut regular_files: Vec<FileEntry> = Vec::new();
@@ -38,6 +39,7 @@ pub fn format_long(entries: Vec<FileEntry>) {
         .unwrap_or(0);
 
     // Format: <permissions> <nlink> <owner> <group> <size> <date> <icon> <name>
+    // TODO: Allow users to change this order in the config
     for entry in all_entries {
         let permissions = entry.format_permissions();
         let nlink = entry.nlink.to_string();
@@ -47,7 +49,7 @@ pub fn format_long(entries: Vec<FileEntry>) {
         let modified = entry.format_modified();
         let icon = entry.get_icon();
         let filename = entry.path.file_name().unwrap().to_string_lossy();
-        let color = entry.get_color();
+        let color = entry.get_color(&config.colors);
 
         println!(
             "{}  {:>nlink_width$}  {:<owner_width$}  {:<group_width$}  {:>size_width$}  {}  {} {}",
