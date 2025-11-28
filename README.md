@@ -23,6 +23,8 @@ The easiest way to install `lx` is using Cargo:
 cargo install lx-cli
 ```
 
+This will install the `lx` binary to `~/.cargo/bin/`, which is typically already in your `PATH`.
+
 Alternatively, you can build it from source:
 
 ```bash
@@ -32,7 +34,29 @@ cargo build --release
 cp target/release/lx ~/.local/bin/
 ```
 
-Now the `lx` command should be available in your path, and you can use it to list your files anywhere!
+For local development, use the provided install script to automatically build and install:
+
+```bash
+./install.sh
+```
+
+This script will build the project and copy the binary to `~/.local/bin/`.
+
+Make sure `~/.local/bin` is in your `PATH`:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Add this to your shell configuration file (`.bashrc`, `.zshrc`, etc.) to make it permanent.
+
+## Quick Start
+
+After installation, simply run:
+
+```bash
+lx
+```
 
 ## Usage
 
