@@ -2,12 +2,12 @@
 use crate::config::{ColorConfig, IconColorConfig, IconConfig};
 use crate::icon::FileIcon;
 use colored::Color;
-use std::path::PathBuf;
+use std::ffi::OsString;
 use std::time::SystemTime;
 
 #[derive(Debug)]
 pub struct FileEntry {
-    pub path: PathBuf,
+    pub path: OsString,
     pub is_dir: bool,
     pub is_executable: bool,
     pub mode: u32,

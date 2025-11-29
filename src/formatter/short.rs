@@ -18,18 +18,18 @@ pub fn format_short(entries: Vec<FileEntry>, config: &Config) {
 
     // Sort each file type alphabetically by filename
     directories.sort_by(|a, b| {
-        let a_name = a.path.file_name().unwrap().to_string_lossy();
-        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        let a_name = a.path.to_string_lossy();
+        let b_name = b.path.to_string_lossy();
         a_name.cmp(&b_name)
     });
     executables.sort_by(|a, b| {
-        let a_name = a.path.file_name().unwrap().to_string_lossy();
-        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        let a_name = a.path.to_string_lossy();
+        let b_name = b.path.to_string_lossy();
         a_name.cmp(&b_name)
     });
     regular_files.sort_by(|a, b| {
-        let a_name = a.path.file_name().unwrap().to_string_lossy();
-        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        let a_name = a.path.to_string_lossy();
+        let b_name = b.path.to_string_lossy();
         a_name.cmp(&b_name)
     });
 
@@ -89,7 +89,7 @@ fn format_with_max_rows(
     let dir_width = directories
         .iter()
         .map(|e| {
-            let filename = e.path.file_name().unwrap().to_string_lossy();
+            let filename = e.path.to_string_lossy();
             UnicodeWidthStr::width(e.get_icon().as_str())
                 + 1
                 + UnicodeWidthStr::width(filename.as_ref())
@@ -100,7 +100,7 @@ fn format_with_max_rows(
     let exec_width = executables
         .iter()
         .map(|e| {
-            let filename = e.path.file_name().unwrap().to_string_lossy();
+            let filename = e.path.to_string_lossy();
             UnicodeWidthStr::width(e.get_icon().as_str())
                 + 1
                 + UnicodeWidthStr::width(filename.as_ref())
@@ -111,7 +111,7 @@ fn format_with_max_rows(
     let file_width = regular_files
         .iter()
         .map(|e| {
-            let filename = e.path.file_name().unwrap().to_string_lossy();
+            let filename = e.path.to_string_lossy();
             UnicodeWidthStr::width(e.get_icon().as_str())
                 + 1
                 + UnicodeWidthStr::width(filename.as_ref())
@@ -134,7 +134,7 @@ fn format_with_max_rows(
                     }
 
                     let entry = &directories[idx];
-                    let filename = entry.path.file_name().unwrap().to_string_lossy();
+                    let filename = entry.path.to_string_lossy();
                     let icon = entry.get_icon_custom(&config.icons);
                     let actual_width = UnicodeWidthStr::width(icon.as_str())
                         + 1
@@ -174,7 +174,7 @@ fn format_with_max_rows(
                     }
 
                     let entry = &executables[idx];
-                    let filename = entry.path.file_name().unwrap().to_string_lossy();
+                    let filename = entry.path.to_string_lossy();
                     let icon = entry.get_icon_custom(&config.icons);
                     let actual_width = UnicodeWidthStr::width(icon.as_str())
                         + 1
@@ -213,7 +213,7 @@ fn format_with_max_rows(
                     }
 
                     let entry = &regular_files[idx];
-                    let filename = entry.path.file_name().unwrap().to_string_lossy();
+                    let filename = entry.path.to_string_lossy();
                     let icon = entry.get_icon_custom(&config.icons);
                     let actual_width = UnicodeWidthStr::width(icon.as_str())
                         + 1
@@ -250,7 +250,7 @@ fn format_single_column_per_type(
     let dir_width = directories
         .iter()
         .map(|e| {
-            let filename = e.path.file_name().unwrap().to_string_lossy();
+            let filename = e.path.to_string_lossy();
             let icon = e.get_icon_custom(&config.icons);
             UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
         })
@@ -260,7 +260,7 @@ fn format_single_column_per_type(
     let exec_width = executables
         .iter()
         .map(|e| {
-            let filename = e.path.file_name().unwrap().to_string_lossy();
+            let filename = e.path.to_string_lossy();
             let icon = e.get_icon_custom(&config.icons);
             UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
         })
@@ -270,7 +270,7 @@ fn format_single_column_per_type(
     let file_width = regular_files
         .iter()
         .map(|e| {
-            let filename = e.path.file_name().unwrap().to_string_lossy();
+            let filename = e.path.to_string_lossy();
             let icon = e.get_icon_custom(&config.icons);
             UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
         })
@@ -291,7 +291,7 @@ fn format_single_column_per_type(
         if dir_width > 0 {
             if i < directories.len() {
                 let entry = &directories[i];
-                let filename = entry.path.file_name().unwrap().to_string_lossy();
+                let filename = entry.path.to_string_lossy();
                 let icon = entry.get_icon_custom(&config.icons);
                 let actual_width = UnicodeWidthStr::width(icon.as_str())
                     + 1
@@ -321,7 +321,7 @@ fn format_single_column_per_type(
         if exec_width > 0 {
             if i < executables.len() {
                 let entry = &executables[i];
-                let filename = entry.path.file_name().unwrap().to_string_lossy();
+                let filename = entry.path.to_string_lossy();
                 let icon = entry.get_icon_custom(&config.icons);
                 let actual_width = UnicodeWidthStr::width(icon.as_str())
                     + 1
@@ -350,7 +350,7 @@ fn format_single_column_per_type(
         // Regular files column
         if i < regular_files.len() {
             let entry = &regular_files[i];
-            let filename = entry.path.file_name().unwrap().to_string_lossy();
+            let filename = entry.path.to_string_lossy();
             let icon = entry.get_icon_custom(&config.icons);
             let actual_width = UnicodeWidthStr::width(icon.as_str())
                 + 1

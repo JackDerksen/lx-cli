@@ -17,18 +17,18 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
 
     // Sort each file type alphabetically by filename
     directories.sort_by(|a, b| {
-        let a_name = a.path.file_name().unwrap().to_string_lossy();
-        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        let a_name = a.path.to_string_lossy();
+        let b_name = b.path.to_string_lossy();
         a_name.cmp(&b_name)
     });
     executables.sort_by(|a, b| {
-        let a_name = a.path.file_name().unwrap().to_string_lossy();
-        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        let a_name = a.path.to_string_lossy();
+        let b_name = b.path.to_string_lossy();
         a_name.cmp(&b_name)
     });
     regular_files.sort_by(|a, b| {
-        let a_name = a.path.file_name().unwrap().to_string_lossy();
-        let b_name = b.path.file_name().unwrap().to_string_lossy();
+        let a_name = a.path.to_string_lossy();
+        let b_name = b.path.to_string_lossy();
         a_name.cmp(&b_name)
     });
 
@@ -65,7 +65,7 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
         let size = entry.format_size();
         let modified = entry.format_modified();
         let icon = entry.get_icon_custom(&config.icons);
-        let filename = entry.path.file_name().unwrap().to_string_lossy();
+        let filename = entry.path.to_string_lossy();
         let color = entry.get_color(&config.colors);
         let icon_color = entry.get_icon_color(&config.icons.colors);
 

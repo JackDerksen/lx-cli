@@ -15,10 +15,10 @@ pub fn read_directory(target_path: &Path, show_hidden: bool) -> io::Result<Vec<F
         // Skip hidden files unless show_hidden is true
         if !show_hidden {
             if let Some(filename) = path.file_name() {
-                if let Some(name) = filename.to_str() {
-                    if name.starts_with('.') {
-                        continue;
-                    }
+                // Use as_encoded_bytes() to handle non-UTF-8 filenames
+                // Files starting with '.' are hidden on Unix systems
+                if filename.as_encoded_bytes().starts_with(b".") {
+                    continue;
                 }
             }
         }
@@ -47,7 +47,7 @@ pub fn read_directory(target_path: &Path, show_hidden: bool) -> io::Result<Vec<F
         let size = metadata.len();
 
         entries.push(FileEntry {
-            path,
+            path: path.file_name().unwrap().to_os_string(),
             is_dir,
             is_executable,
             mode: metadata.permissions().mode(),
