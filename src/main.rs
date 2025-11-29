@@ -16,6 +16,7 @@ use reader::read_directory;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let config = load_config();
+
     let target_path = Path::new(&args.target);
 
     if !target_path.exists() {

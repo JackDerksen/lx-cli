@@ -6,7 +6,7 @@ pub mod icon;
 pub mod reader;
 
 pub use cli::Args;
-pub use config::Config;
+pub use config::{Config, IconConfig};
 pub use file_entry::FileEntry;
 pub use formatter::{format_long, format_short};
 pub use icon::FileIcon;

@@ -1,5 +1,5 @@
 /// Core data structures (FileEntry and FileType) that represent files and its metadata.
-use crate::config::ColorConfig;
+use crate::config::{ColorConfig, IconColorConfig, IconConfig};
 use crate::icon::FileIcon;
 use colored::Color;
 use std::path::PathBuf;
@@ -33,8 +33,16 @@ impl FileEntry {
         self.get_file_icon().as_str().to_string()
     }
 
+    pub fn get_icon_custom(&self, config: &IconConfig) -> String {
+        self.get_file_icon().as_str_custom(config)
+    }
+
     pub fn get_color(&self, config: &ColorConfig) -> Color {
         self.get_file_icon().get_color(config)
+    }
+
+    pub fn get_icon_color(&self, config: &IconColorConfig) -> Color {
+        self.get_file_icon().get_icon_color(config)
     }
 
     pub fn get_file_type(&self) -> FileType {

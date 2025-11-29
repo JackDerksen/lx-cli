@@ -16,12 +16,43 @@ executable = "green"
 # Color for regular files
 regular = "white"
 
+[icons]
+# Custom icons for different file types
+# By default, lx uses nerd font icons. If you don't have a nerd font installed,
+# you can set custom icons here using any unicode characters or simple ASCII.
+
+# Examples:
+# Nerd font (default):
+# directory = ""
+# executable = ""
+# regular = ""
+
+# Emoji icons:
+# directory = "📁"
+# executable = "⚙️"
+# regular = "📄"
+
+# Simple ASCII:
+# directory = "/"
+# executable = "*"
+# regular = "-"
+
+directory = ""
+executable = ""
+regular = ""
+
+[icons.colors]
+# Custom colors for icons (separate from filename colors)
+# Uses the same color names as [colors] section
+# By default, icon colors match the filename colors for each file type
+directory = "blue"
+executable = "green"
+regular = "white"
+
 [display]
 # Number of spaces between columns (default: 2)
 column_spacing = 2
 
-# Maximum number of rows to display before wrapping to next column
+# Maximum number of rows before wrapping to next column in short format
 # Only applies to short format (not -l). Set to 0 for no limit (default: 0)
-# Note that this can look weird if you have a lot of files in a directory with
-a small max_rows value. I think 8 is a pretty safe balance.
 max_rows = 0

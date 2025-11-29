@@ -8,6 +8,8 @@ pub struct Config {
     #[serde(default)]
     pub colors: ColorConfig,
     #[serde(default)]
+    pub icons: IconConfig,
+    #[serde(default)]
     pub display: DisplayConfig,
 }
 
@@ -18,6 +20,28 @@ pub struct ColorConfig {
     #[serde(default = "default_executable_color")]
     pub executable: String,
     #[serde(default = "default_regular_color")]
+    pub regular: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct IconConfig {
+    #[serde(default = "default_directory_icon")]
+    pub directory: String,
+    #[serde(default = "default_executable_icon")]
+    pub executable: String,
+    #[serde(default = "default_regular_icon")]
+    pub regular: String,
+    #[serde(default)]
+    pub colors: IconColorConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct IconColorConfig {
+    #[serde(default = "default_directory_icon_color")]
+    pub directory: String,
+    #[serde(default = "default_executable_icon_color")]
+    pub executable: String,
+    #[serde(default = "default_regular_icon_color")]
     pub regular: String,
 }
 
@@ -33,7 +57,29 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             colors: ColorConfig::default(),
+            icons: IconConfig::default(),
             display: DisplayConfig::default(),
+        }
+    }
+}
+
+impl Default for IconConfig {
+    fn default() -> Self {
+        IconConfig {
+            directory: default_directory_icon(),
+            executable: default_executable_icon(),
+            regular: default_regular_icon(),
+            colors: IconColorConfig::default(),
+        }
+    }
+}
+
+impl Default for IconColorConfig {
+    fn default() -> Self {
+        IconColorConfig {
+            directory: default_directory_icon_color(),
+            executable: default_executable_icon_color(),
+            regular: default_regular_icon_color(),
         }
     }
 }
@@ -77,6 +123,30 @@ fn default_max_rows() -> usize {
     0 // 0 means no limit
 }
 
+fn default_directory_icon() -> String {
+    "".to_string()
+}
+
+fn default_executable_icon() -> String {
+    "".to_string()
+}
+
+fn default_regular_icon() -> String {
+    "".to_string()
+}
+
+fn default_directory_icon_color() -> String {
+    "blue".to_string()
+}
+
+fn default_executable_icon_color() -> String {
+    "green".to_string()
+}
+
+fn default_regular_icon_color() -> String {
+    "white".to_string()
+}
+
 impl ColorConfig {
     pub fn get_directory_color(&self) -> Color {
         parse_color(&self.directory)
@@ -88,6 +158,34 @@ impl ColorConfig {
 
     pub fn get_regular_color(&self) -> Color {
         parse_color(&self.regular)
+    }
+}
+
+impl IconColorConfig {
+    pub fn get_directory_color(&self) -> Color {
+        parse_color(&self.directory)
+    }
+
+    pub fn get_executable_color(&self) -> Color {
+        parse_color(&self.executable)
+    }
+
+    pub fn get_regular_color(&self) -> Color {
+        parse_color(&self.regular)
+    }
+}
+
+impl IconConfig {
+    pub fn get_directory_icon(&self) -> String {
+        self.directory.clone()
+    }
+
+    pub fn get_executable_icon(&self) -> String {
+        self.executable.clone()
+    }
+
+    pub fn get_regular_icon(&self) -> String {
+        self.regular.clone()
     }
 }
 

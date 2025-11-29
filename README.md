@@ -111,6 +111,47 @@ max_rows = 7
 - `executable`: Color for executable files (default: `green`)
 - `regular`: Color for regular files (default: `white`)
 
+#### `[icons]`
+- `directory`: Custom icon for directories (default: nerd font folder icon)
+- `executable`: Custom icon for executables (default: nerd font gear icon)
+- `regular`: Custom icon for regular files (default: nerd font file icon)
+
+Icons can be any string - single characters, multiple characters, emoji, ASCII, or anything else:
+
+```toml
+[icons]
+# Simple ASCII
+directory = "/"
+executable = "*"
+regular = "-"
+
+# Multi-character
+directory = "[d]"
+executable = "[x]"
+regular = "[f]"
+
+# Or use emoji
+directory = "📁"
+executable = "⚙️"
+regular = "📄"
+```
+
+#### `[icons.colors]`
+- `directory`: Color for directory icons (default: `blue`)
+- `executable`: Color for executable icons (default: `green`)
+- `regular`: Color for regular file icons (default: `white`)
+
+You can customize icon colors separately from filename colors:
+
+```toml
+[icons.colors]
+directory = "bright_blue"
+executable = "bright_green"
+regular = "bright_white"
+```
+
+**Note**: If file icons don't render correctly in your terminal, either install a nerd font (https://www.nerdfonts.com) or configure custom icons as shown above.
+
 #### `[display]`
 - `column_spacing`: Number of spaces between columns (default: `2`)
 - `max_rows`: Maximum number of rows before wrapping to next column in short format. Set to `0` for no limit (default: `0`)

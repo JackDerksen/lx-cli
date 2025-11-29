@@ -64,9 +64,10 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
         let group = &entry.group;
         let size = entry.format_size();
         let modified = entry.format_modified();
-        let icon = entry.get_icon();
+        let icon = entry.get_icon_custom(&config.icons);
         let filename = entry.path.file_name().unwrap().to_string_lossy();
         let color = entry.get_color(&config.colors);
+        let icon_color = entry.get_icon_color(&config.icons.colors);
 
         println!(
             "{}  {:>nlink_width$}  {:<owner_width$}  {:<group_width$}  {:>size_width$}  {}  {} {}",
@@ -76,7 +77,7 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
             group,
             size,
             modified,
-            icon,
+            icon.color(icon_color),
             filename.color(color).bold(),
             nlink_width = max_nlink_width,
             owner_width = max_owner_width,

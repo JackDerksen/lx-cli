@@ -135,14 +135,14 @@ fn format_with_max_rows(
 
                     let entry = &directories[idx];
                     let filename = entry.path.file_name().unwrap().to_string_lossy();
-                    let icon = entry.get_icon();
+                    let icon = entry.get_icon_custom(&config.icons);
                     let actual_width = UnicodeWidthStr::width(icon.as_str())
                         + 1
                         + UnicodeWidthStr::width(filename.as_ref());
 
                     line.push_str(&format!(
                         "{} {}",
-                        icon,
+                        icon.color(entry.get_icon_color(&config.icons.colors)),
                         filename.color(entry.get_color(&config.colors)).bold()
                     ));
 
@@ -175,14 +175,14 @@ fn format_with_max_rows(
 
                     let entry = &executables[idx];
                     let filename = entry.path.file_name().unwrap().to_string_lossy();
-                    let icon = entry.get_icon();
+                    let icon = entry.get_icon_custom(&config.icons);
                     let actual_width = UnicodeWidthStr::width(icon.as_str())
                         + 1
                         + UnicodeWidthStr::width(filename.as_ref());
 
                     line.push_str(&format!(
                         "{} {}",
-                        icon,
+                        icon.color(entry.get_icon_color(&config.icons.colors)),
                         filename.color(entry.get_color(&config.colors)).bold()
                     ));
 
@@ -214,14 +214,14 @@ fn format_with_max_rows(
 
                     let entry = &regular_files[idx];
                     let filename = entry.path.file_name().unwrap().to_string_lossy();
-                    let icon = entry.get_icon();
+                    let icon = entry.get_icon_custom(&config.icons);
                     let actual_width = UnicodeWidthStr::width(icon.as_str())
                         + 1
                         + UnicodeWidthStr::width(filename.as_ref());
 
                     line.push_str(&format!(
                         "{} {}",
-                        icon,
+                        icon.color(entry.get_icon_color(&config.icons.colors)),
                         filename.color(entry.get_color(&config.colors))
                     ));
 
@@ -251,9 +251,8 @@ fn format_single_column_per_type(
         .iter()
         .map(|e| {
             let filename = e.path.file_name().unwrap().to_string_lossy();
-            UnicodeWidthStr::width(e.get_icon().as_str())
-                + 1
-                + UnicodeWidthStr::width(filename.as_ref())
+            let icon = e.get_icon_custom(&config.icons);
+            UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -262,9 +261,8 @@ fn format_single_column_per_type(
         .iter()
         .map(|e| {
             let filename = e.path.file_name().unwrap().to_string_lossy();
-            UnicodeWidthStr::width(e.get_icon().as_str())
-                + 1
-                + UnicodeWidthStr::width(filename.as_ref())
+            let icon = e.get_icon_custom(&config.icons);
+            UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -273,9 +271,8 @@ fn format_single_column_per_type(
         .iter()
         .map(|e| {
             let filename = e.path.file_name().unwrap().to_string_lossy();
-            UnicodeWidthStr::width(e.get_icon().as_str())
-                + 1
-                + UnicodeWidthStr::width(filename.as_ref())
+            let icon = e.get_icon_custom(&config.icons);
+            UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -295,14 +292,14 @@ fn format_single_column_per_type(
             if i < directories.len() {
                 let entry = &directories[i];
                 let filename = entry.path.file_name().unwrap().to_string_lossy();
-                let icon = entry.get_icon();
+                let icon = entry.get_icon_custom(&config.icons);
                 let actual_width = UnicodeWidthStr::width(icon.as_str())
                     + 1
                     + UnicodeWidthStr::width(filename.as_ref());
 
                 line.push_str(&format!(
                     "{} {}",
-                    icon,
+                    icon.color(entry.get_icon_color(&config.icons.colors)),
                     filename.color(entry.get_color(&config.colors)).bold()
                 ));
                 // Add padding after the colored text
@@ -325,14 +322,14 @@ fn format_single_column_per_type(
             if i < executables.len() {
                 let entry = &executables[i];
                 let filename = entry.path.file_name().unwrap().to_string_lossy();
-                let icon = entry.get_icon();
+                let icon = entry.get_icon_custom(&config.icons);
                 let actual_width = UnicodeWidthStr::width(icon.as_str())
                     + 1
                     + UnicodeWidthStr::width(filename.as_ref());
 
                 line.push_str(&format!(
                     "{} {}",
-                    icon,
+                    icon.color(entry.get_icon_color(&config.icons.colors)),
                     filename.color(entry.get_color(&config.colors)).bold()
                 ));
                 // Add padding after the colored text
@@ -354,14 +351,14 @@ fn format_single_column_per_type(
         if i < regular_files.len() {
             let entry = &regular_files[i];
             let filename = entry.path.file_name().unwrap().to_string_lossy();
-            let icon = entry.get_icon();
+            let icon = entry.get_icon_custom(&config.icons);
             let actual_width = UnicodeWidthStr::width(icon.as_str())
                 + 1
                 + UnicodeWidthStr::width(filename.as_ref());
 
             line.push_str(&format!(
                 "{} {}",
-                icon,
+                icon.color(entry.get_icon_color(&config.icons.colors)),
                 filename.color(entry.get_color(&config.colors))
             ));
             // Add padding after the colored text
