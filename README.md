@@ -10,6 +10,9 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 - ⚙️ **Configurable**: customize colors, spacing, and display options
 - 📏 **Smart alignment**: properly handles unicode characters and icons
 
+<img width="2092" height="1314" alt="CleanShot 2025-11-28 at 20 34 55@2x" src="https://github.com/user-attachments/assets/d15d1bc9-a496-4c94-9820-5f9d6b0025e4" />
+<img width="2092" height="1536" alt="CleanShot 2025-11-28 at 20 35 30@2x" src="https://github.com/user-attachments/assets/9ede5bd4-7e08-48c8-8ced-1c210e025619" />
+
 ## Requirements
 
 - Rust (>= 1.56.1) and Cargo
