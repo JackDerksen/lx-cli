@@ -10,7 +10,7 @@ use std::path::Path;
 
 use cli::Args;
 use config::load_config;
-use formatter::{format_long, format_short};
+use formatter::{format_long, format_one_per_line, format_short};
 use reader::read_directory;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,6 +31,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.long {
         format_long(entries, &config);
+    } else if args.one_per_line {
+        format_one_per_line(entries, &config);
     } else {
         format_short(entries, &config);
     }

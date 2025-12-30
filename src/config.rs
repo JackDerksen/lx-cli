@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct Config {
     #[serde(default)]
     pub colors: ColorConfig,
@@ -51,16 +51,6 @@ pub struct DisplayConfig {
     pub column_spacing: usize,
     #[serde(default = "default_max_rows")]
     pub max_rows: usize,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            colors: ColorConfig::default(),
-            icons: IconConfig::default(),
-            display: DisplayConfig::default(),
-        }
-    }
 }
 
 impl Default for IconConfig {

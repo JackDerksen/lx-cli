@@ -16,4 +16,7 @@ pub struct Args {
         help = "Show all files, including hidden ones"
     )]
     pub show_hidden: bool,
+
+    #[arg(short = '1', help = "Force single column output")]
+    pub one_per_line: bool,
 }

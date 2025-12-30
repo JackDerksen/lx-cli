@@ -70,19 +70,19 @@ fn format_with_max_rows(
     let dir_num_cols = if directories.is_empty() {
         0
     } else {
-        (directories.len() + max_rows - 1) / max_rows
+        directories.len().div_ceil(max_rows)
     };
 
     let exec_num_cols = if executables.is_empty() {
         0
     } else {
-        (executables.len() + max_rows - 1) / max_rows
+        executables.len().div_ceil(max_rows)
     };
 
     let file_num_cols = if regular_files.is_empty() {
         0
     } else {
-        (regular_files.len() + max_rows - 1) / max_rows
+        regular_files.len().div_ceil(max_rows)
     };
 
     // Calculate width for each file type
