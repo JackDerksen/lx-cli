@@ -10,7 +10,7 @@ use std::path::Path;
 
 use cli::Args;
 use config::load_config;
-use formatter::{format_long, format_one_per_line, format_short};
+use formatter::{format_long, format_one_per_line, format_recursive, format_short};
 use reader::read_directory;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -27,14 +27,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let entries = read_directory(target_path, args.show_hidden)?;
-
-    if args.long {
-        format_long(entries, &config);
-    } else if args.one_per_line {
-        format_one_per_line(entries, &config);
+    if args.recursive {
+        format_recursive(target_path, &config, args.show_hidden);
     } else {
-        format_short(entries, &config);
+        let entries = read_directory(target_path, args.show_hidden)?;
+
+        if args.long {
+            format_long(entries, &config);
+        } else if args.one_per_line {
+            format_one_per_line(entries, &config);
+        } else {
+            format_short(entries, &config);
+        }
     }
 
     Ok(())

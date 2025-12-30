@@ -51,6 +51,22 @@ pub struct DisplayConfig {
     pub column_spacing: usize,
     #[serde(default = "default_max_rows")]
     pub max_rows: usize,
+    #[serde(default)]
+    pub tree: TreeConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct TreeConfig {
+    #[serde(default = "default_tree_style")]
+    pub style: String,
+}
+
+impl Default for TreeConfig {
+    fn default() -> Self {
+        TreeConfig {
+            style: default_tree_style(),
+        }
+    }
 }
 
 impl Default for IconConfig {
@@ -89,6 +105,7 @@ impl Default for DisplayConfig {
         DisplayConfig {
             column_spacing: default_column_spacing(),
             max_rows: default_max_rows(),
+            tree: TreeConfig::default(),
         }
     }
 }
@@ -111,6 +128,10 @@ fn default_column_spacing() -> usize {
 
 fn default_max_rows() -> usize {
     0 // 0 means no limit
+}
+
+fn default_tree_style() -> String {
+    "ascii".to_string()
 }
 
 fn default_directory_icon() -> String {

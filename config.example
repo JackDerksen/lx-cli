@@ -56,3 +56,10 @@ column_spacing = 2
 # Maximum number of rows before wrapping to next column in short format
 # Only applies to short format (not -l). Set to 0 for no limit (default: 0)
 max_rows = 0
+
+[display.tree]
+# Tree display style for recursive output (-r flag)
+# Options: "ascii" (default) or "indent"
+# - "ascii": Uses box-drawing characters (├──, └──, │)
+# - "indent": Uses simple spacing for indentation
+style = "ascii"

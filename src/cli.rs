@@ -19,4 +19,11 @@ pub struct Args {
 
     #[arg(short = '1', help = "Force single column output")]
     pub one_per_line: bool,
+
+    #[arg(
+        short = 'r',
+        long = "recursive",
+        help = "Show directory tree recursively"
+    )]
+    pub recursive: bool,
 }
