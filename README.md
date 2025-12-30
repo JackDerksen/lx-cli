@@ -5,9 +5,11 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 ## Features
 
 - 🎨 **Colorized output** with file type icons
-- 📊 **Multiple display modes**: short (default) and long (`-l`)
+- 📊 **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), and tree view (`-r`)
 - 👻 **Hidden files support**: use `-a` to show all files
-- ⚙️ **Configurable**: customize colors, spacing, and display options
+- 🔤 **Flexible sorting**: sort by name, size, date, or type with `-s`
+- 🌳 **Recursive tree view**: display directory hierarchies with `-r`
+- ⚙️ **Configurable**: customize colors, spacing, display options, and tree styles
 - 📏 **Smart alignment**: properly handles unicode characters and icons
 
 <img width="2092" height="1314" alt="CleanShot 2025-11-28 at 20 34 55@2x" src="https://github.com/user-attachments/assets/d15d1bc9-a496-4c94-9820-5f9d6b0025e4" />
@@ -63,7 +65,7 @@ lx
 
 ## Usage
 
-`lx` is used pretty much just like regular old `ls`. There are only a couple of flags at the moment, but more are on the way!
+`lx` is used pretty much just like regular old `ls`:
 
 ```bash
 # List files in current directory
@@ -75,90 +77,50 @@ lx -l
 # Show hidden files
 lx -a
 
+# Display one file per line
+lx -1
+
+# Show directory tree recursively
+lx -r
+
+# Sort by size (largest first)
+lx -s size
+
+# Sort by modification date (newest first)
+lx -s date
+
+# Sort by file type (directories, executables, files)
+lx -s type
+
 # Combine flags
-lx -la
+lx -l -a -s size
 
 # List files in a specific directory
 lx /path/to/directory
 ```
 
+## Flags
+
+- `-l`, `--long`: Use a long listing format with detailed file information
+- `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
+- `-1`: Force single column output (useful for piping to other commands)
+- `-r`, `--recursive`: Show directory tree recursively with proper hierarchy
+- `-s`, `--sort <FIELD>`: Sort by field: `name` (default), `size`, `date`, or `type`
+
 ## Configuration
 
 `lx` can be customized using a configuration file at `~/.config/lx/config`.
 
-See `config.example` for all available options.
+See [`config.example`](config.example) for all available options and detailed configuration examples.
 
-### Example Configuration 
-### (this is different from default)
+### Configuration Sections
 
-```toml
-[colors]
-directory = "blue"
-executable = "red"
-regular = "white"
+The configuration file supports the following sections:
 
-[display]
-column_spacing = 3
-max_rows = 7
-```
+- **`[colors]`**: Customize text colors for different file types
+- **`[icons]`**: Set custom icons for different file types
+- **`[icons.colors]`**: Customize colors for icons separately from filenames
+- **`[display]`**: Control layout options like column spacing and multi-column wrapping
+- **`[display.tree]`**: Control tree display style for recursive listings (`style = "ascii"` or `style = "indent"`)
 
-### Available Colors
-
-- `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`
-- `bright_black`, `bright_red`, `bright_green`, `bright_yellow`, `bright_blue`, `bright_magenta`, `bright_cyan`, `bright_white`
-
-### Configuration Options
-
-#### `[colors]`
-- `directory`: Color for directory names (default: `blue`)
-- `executable`: Color for executable files (default: `green`)
-- `regular`: Color for regular files (default: `white`)
-
-#### `[icons]`
-- `directory`: Custom icon for directories (default: nerd font folder icon)
-- `executable`: Custom icon for executables (default: nerd font gear icon)
-- `regular`: Custom icon for regular files (default: nerd font file icon)
-
-Icons can be any string - single characters, multiple characters, emoji, ASCII, or anything else:
-
-```toml
-[icons]
-# Simple ASCII
-directory = "/"
-executable = "*"
-regular = "-"
-
-# Multi-character
-directory = "[d]"
-executable = "[x]"
-regular = "[f]"
-
-# Or use emoji
-directory = "📁"
-executable = "⚙️"
-regular = "📄"
-```
-
-#### `[icons.colors]`
-- `directory`: Color for directory icons (default: `blue`)
-- `executable`: Color for executable icons (default: `green`)
-- `regular`: Color for regular file icons (default: `white`)
-
-You can customize icon colors separately from filename colors:
-
-```toml
-[icons.colors]
-directory = "bright_blue"
-executable = "bright_green"
-regular = "bright_white"
-```
-
-**Note**: If file icons don't render correctly in your terminal, either install a nerd font (https://www.nerdfonts.com) or configure custom icons as shown above.
-
-#### `[display]`
-- `column_spacing`: Number of spaces between columns (default: `2`)
-- `max_rows`: Maximum number of rows before wrapping to next column in short format. Set to `0` for no limit (default: `0`)
-  - When set, each file type (directories, executables, regular files) will wrap into multiple columns after reaching the max row count
-  - For example, with `max_rows = 5` and 12 directories, they will be displayed in 3 columns with 5 rows each
-  - File type separation is maintained - directories, executables, and files are kept in their own sections
-  - Only applies to short format (default view), not long format (`-l`)
+For a complete list of available colors, icons, and configuration options, please refer to [`config.example`](config.example).
