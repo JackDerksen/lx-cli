@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Apply sorting if specified
         if let Some(sort_by) = args.sort {
-            let sort_field = SortField::from_str(&sort_by);
+            let sort_field = SortField::from_string(&sort_by);
             sort_entries(&mut entries, sort_field);
         }
 
