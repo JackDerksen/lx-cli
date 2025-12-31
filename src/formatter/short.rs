@@ -16,23 +16,6 @@ pub fn format_short(entries: Vec<FileEntry>, config: &Config) {
         }
     }
 
-    // Sort each file type alphabetically by filename
-    directories.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-    executables.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-    regular_files.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-
     let column_spacing = config.display.column_spacing;
     let max_rows = config.display.max_rows;
 

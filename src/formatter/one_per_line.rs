@@ -15,23 +15,6 @@ pub fn format_one_per_line(entries: Vec<FileEntry>, config: &Config) {
         }
     }
 
-    // Sort each file type alphabetically by filename
-    directories.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-    executables.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-    regular_files.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-
     // Print directories
     for entry in directories {
         let filename = entry.path.to_string_lossy();

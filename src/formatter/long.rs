@@ -15,23 +15,7 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
         }
     }
 
-    // Sort each file type alphabetically by filename
-    directories.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-    executables.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-    regular_files.sort_by(|a, b| {
-        let a_name = a.path.to_string_lossy();
-        let b_name = b.path.to_string_lossy();
-        a_name.cmp(&b_name)
-    });
-
+    // Don't sort here - sorting is handled in main.rs and should be preserved
     // Combine all entries in type order
     let mut all_entries = Vec::new();
     all_entries.extend(directories);
@@ -66,8 +50,15 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
         let modified = entry.format_modified();
         let icon = entry.get_icon_custom(&config.icons);
         let filename = entry.path.to_string_lossy();
-        let color = entry.get_color(&config.colors);
         let icon_color = entry.get_icon_color(&config.icons.colors);
+
+        // Apply bold to directories and executables, regular style to files
+        let filename_colored = match entry.get_file_type() {
+            FileType::Directory | FileType::Executable => {
+                filename.color(entry.get_color(&config.colors)).bold()
+            }
+            FileType::RegularFile => filename.color(entry.get_color(&config.colors)),
+        };
 
         println!(
             "{}  {:>nlink_width$}  {:<owner_width$}  {:<group_width$}  {:>size_width$}  {}  {} {}",
@@ -78,7 +69,7 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
             size,
             modified,
             icon.color(icon_color),
-            filename.color(color).bold(),
+            filename_colored,
             nlink_width = max_nlink_width,
             owner_width = max_owner_width,
             group_width = max_group_width,
