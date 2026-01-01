@@ -37,9 +37,9 @@ regular = "white"
 # executable = "*"
 # regular = "-"
 
-directory = ""
-executable = ""
-regular = ""
+directory = ""
+executable = ""
+regular = ""
 
 [icons.colors]
 # Custom colors for icons (separate from filename colors)
@@ -56,19 +56,6 @@ column_spacing = 2
 # Maximum number of rows before wrapping to next column in short format
 # Only applies to short format (not -l). Set to 0 for no limit (default: 0)
 max_rows = 0
-
-[display.tree]
-# Tree display style for recursive output (-r flag)
-# Options: "ascii" (default) or "indent"
-# - "ascii": Uses box-drawing characters (├──, └──, │)
-# - "indent": Uses simple spacing for indentation
-style = "ascii"
-
-# Recursive long format style (when using -r and -l flags together)
-# Options: "nested" (default) or "header"
-# - "nested": Shows subdirectories indented under their parent directory in the same output
-# - "header": Shows each directory as a separate section with the path as a header
-recursive_long_format = "nested"
 
 # Long format field ordering and visibility (used with -l flag)
 # Specify which fields to display and in what order. Available fields:
@@ -95,3 +82,16 @@ long_format_fields = [
     "nlink",
     "permissions",
 ]
+
+[display.tree]
+# Tree display style for recursive output (-r flag)
+# Options: "ascii" (default) or "indent"
+# - "ascii": Uses box-drawing characters (├──, └──, │)
+# - "indent": Uses simple spacing for indentation
+style = "ascii"
+
+# Recursive long format style (when using -r and -l flags together)
+# Options: "nested" (default) or "header"
+# - "nested": Shows subdirectories indented under their parent directory in the same output
+# - "header": Shows each directory as a separate section with the path as a header
+recursive_long_format = "nested"
