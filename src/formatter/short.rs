@@ -1,9 +1,13 @@
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
+use crate::sort::sort_default;
 use colored::Colorize;
 use unicode_width::UnicodeWidthStr;
 
-pub fn format_short(entries: Vec<FileEntry>, config: &Config) {
+pub fn format_short(mut entries: Vec<FileEntry>, config: &Config) {
+    // Apply default sorting: by type, then alphabetically (case-insensitive)
+    sort_default(&mut entries);
+
     let mut directories: Vec<FileEntry> = Vec::new();
     let mut executables: Vec<FileEntry> = Vec::new();
     let mut regular_files: Vec<FileEntry> = Vec::new();

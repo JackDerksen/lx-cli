@@ -1,28 +1,13 @@
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
+use crate::sort::sort_default;
 use colored::Colorize;
 
-pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
-    let mut directories: Vec<FileEntry> = Vec::new();
-    let mut executables: Vec<FileEntry> = Vec::new();
-    let mut regular_files: Vec<FileEntry> = Vec::new();
+pub fn format_long(mut entries: Vec<FileEntry>, config: &Config) {
+    // Apply default sorting: by type, then alphabetically (case-insensitive)
+    sort_default(&mut entries);
 
-    for entry in entries {
-        match entry.get_file_type() {
-            FileType::Directory => directories.push(entry),
-            FileType::Executable => executables.push(entry),
-            FileType::RegularFile => regular_files.push(entry),
-        }
-    }
-
-    // Don't sort here - sorting is handled in main.rs and should be preserved
-    // Combine all entries in type order
-    let mut all_entries = Vec::new();
-    all_entries.extend(directories);
-    all_entries.extend(executables);
-    all_entries.extend(regular_files);
-
-    print_long_entries(&all_entries, config, "");
+    print_long_entries(&entries, config, "");
 }
 
 pub fn print_long_entries(entries: &[FileEntry], config: &Config, prefix: &str) {

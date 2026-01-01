@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::file_entry::FileEntry;
 use crate::formatter::long::{calculate_column_widths, print_long_entries_with_widths};
+use crate::sort::sort_default;
 use colored::Colorize;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -129,13 +130,21 @@ fn print_directory_tree(
                     }
 
                     // Calculate widths once for all entries at this level
-                    let entries_only: Vec<FileEntry> =
+                    let mut entries_only: Vec<FileEntry> =
                         file_entries.iter().map(|(e, _)| e.clone()).collect();
+                    // Apply default sorting: by type, then alphabetically (case-insensitive)
+                    sort_default(&mut entries_only);
                     let fields = &config.display.long_format_fields;
                     let widths = calculate_column_widths(&entries_only, fields);
 
                     // Print each entry and recurse into directories immediately after
-                    for (entry, entry_path) in &file_entries {
+                    for entry in &entries_only {
+                        // Find the corresponding path from the original file_entries
+                        let entry_path = file_entries
+                            .iter()
+                            .find(|(e, _)| e.path.to_string_lossy() == entry.path.to_string_lossy())
+                            .map(|(_, p)| p.clone())
+                            .unwrap_or_else(|| std::path::PathBuf::new());
                         // Print this entry using pre-calculated widths
                         let single_entry = vec![entry.clone()];
                         print_long_entries_with_widths(
@@ -292,8 +301,11 @@ fn print_long_format_with_headers(
     }
 
     // Use the new print_long_entries function for configurable field ordering
-    let file_entries_only: Vec<FileEntry> = file_entries.iter().map(|(e, _)| e.clone()).collect();
+    let mut file_entries_only: Vec<FileEntry> =
+        file_entries.iter().map(|(e, _)| e.clone()).collect();
     if !file_entries_only.is_empty() {
+        // Apply default sorting: by type, then alphabetically (case-insensitive)
+        sort_default(&mut file_entries_only);
         let fields = &config.display.long_format_fields;
         let widths = calculate_column_widths(&file_entries_only, fields);
         print_long_entries_with_widths(&file_entries_only, config, "", fields, &widths);

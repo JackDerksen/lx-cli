@@ -13,7 +13,6 @@ use cli::Args;
 use config::load_config;
 use formatter::{format_long, format_one_per_line, format_recursive, format_short};
 use reader::read_directory;
-use sort::{SortField, sort_entries};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
@@ -32,13 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.recursive {
         format_recursive(target_path, &config, args.show_hidden, args.long);
     } else {
-        let mut entries = read_directory(target_path, args.show_hidden)?;
-
-        // Apply sorting if specified
-        if let Some(sort_by) = args.sort {
-            let sort_field = SortField::from_string(&sort_by);
-            sort_entries(&mut entries, sort_field);
-        }
+        let entries = read_directory(target_path, args.show_hidden)?;
 
         if args.long {
             format_long(entries, &config);

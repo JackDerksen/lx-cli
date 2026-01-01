@@ -26,12 +26,4 @@ pub struct Args {
         help = "Show directory tree recursively"
     )]
     pub recursive: bool,
-
-    #[arg(
-        short = 's',
-        long = "sort",
-        value_name = "FIELD",
-        help = "Sort by: name (default), size, date, or type"
-    )]
-    pub sort: Option<String>,
 }
