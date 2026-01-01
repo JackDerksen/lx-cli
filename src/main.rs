@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.recursive {
-        format_recursive(target_path, &config, args.show_hidden);
+        format_recursive(target_path, &config, args.show_hidden, args.long);
     } else {
         let mut entries = read_directory(target_path, args.show_hidden)?;
 

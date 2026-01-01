@@ -63,3 +63,9 @@ max_rows = 0
 # - "ascii": Uses box-drawing characters (├──, └──, │)
 # - "indent": Uses simple spacing for indentation
 style = "ascii"
+
+# Recursive long format style (when using -r and -l flags together)
+# Options: "nested" (default) or "header"
+# - "nested": Shows subdirectories indented under their parent directory in the same output
+# - "header": Shows each directory as a separate section with the path as a header
+recursive_long_format = "nested"

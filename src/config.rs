@@ -59,12 +59,15 @@ pub struct DisplayConfig {
 pub struct TreeConfig {
     #[serde(default = "default_tree_style")]
     pub style: String,
+    #[serde(default = "default_recursive_long_format")]
+    pub recursive_long_format: String,
 }
 
 impl Default for TreeConfig {
     fn default() -> Self {
         TreeConfig {
             style: default_tree_style(),
+            recursive_long_format: default_recursive_long_format(),
         }
     }
 }
@@ -132,6 +135,10 @@ fn default_max_rows() -> usize {
 
 fn default_tree_style() -> String {
     "ascii".to_string()
+}
+
+fn default_recursive_long_format() -> String {
+    "nested".to_string()
 }
 
 fn default_directory_icon() -> String {
