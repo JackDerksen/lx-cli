@@ -11,8 +11,28 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 - ⚙️ **Configurable**: customize colors, spacing, display options, and tree styles
 - 📏 **Smart alignment**: properly handles unicode characters and icons
 
-<img width="2092" height="1314" alt="CleanShot 2025-11-28 at 20 34 55@2x" src="https://github.com/user-attachments/assets/d15d1bc9-a496-4c94-9820-5f9d6b0025e4" />
-<img width="2092" height="1536" alt="CleanShot 2025-11-28 at 20 35 30@2x" src="https://github.com/user-attachments/assets/9ede5bd4-7e08-48c8-8ced-1c210e025619" />
+
+## Demo
+
+<img width="3024" height="1894" alt="CleanShot 2025-12-31 at 21 58 16@2x" src="https://github.com/user-attachments/assets/44e6b315-4679-4e73-b875-8eb044d3de8d" />
+Basic formatting difference compared to the standard ls command
+
+---
+<img width="3024" height="1896" alt="CleanShot 2025-12-31 at 21 52 38@2x" src="https://github.com/user-attachments/assets/fc7415c7-0427-46cf-9b45-95b4a78cf1b4" />
+Nicer long format compared to the standard ls command (displayed fields can be customized)
+
+---
+<img width="3024" height="1896" alt="CleanShot 2025-12-31 at 21 53 02@2x" src="https://github.com/user-attachments/assets/6651dcb4-e571-4245-9009-cb9d50b5c542" />
+Recursive sub-directory tree view with the '-r' flag
+
+---
+<img width="3024" height="1900" alt="CleanShot 2025-12-31 at 21 53 35@2x" src="https://github.com/user-attachments/assets/68a16075-0d8b-4124-aec2-253740fa26ec" />
+The '-r' flag can be combined with the '-l' long flag for viewing subdirectory info
+
+---
+<img width="3024" height="1898" alt="CleanShot 2025-12-31 at 21 54 04@2x" src="https://github.com/user-attachments/assets/e44422e9-6c69-4d34-9322-9449aab5c62f" />
+'-1' flag for one-per-line output formatting
+
 
 ## Requirements
 
