@@ -5,7 +5,7 @@ use colored::Color;
 use std::ffi::OsString;
 use std::time::SystemTime;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileEntry {
     pub path: OsString,
     pub is_dir: bool,

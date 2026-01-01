@@ -53,6 +53,8 @@ pub struct DisplayConfig {
     pub max_rows: usize,
     #[serde(default)]
     pub tree: TreeConfig,
+    #[serde(default = "default_long_format_fields")]
+    pub long_format_fields: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -109,6 +111,7 @@ impl Default for DisplayConfig {
             column_spacing: default_column_spacing(),
             max_rows: default_max_rows(),
             tree: TreeConfig::default(),
+            long_format_fields: default_long_format_fields(),
         }
     }
 }
@@ -139,6 +142,19 @@ fn default_tree_style() -> String {
 
 fn default_recursive_long_format() -> String {
     "nested".to_string()
+}
+
+fn default_long_format_fields() -> Vec<String> {
+    vec![
+        "filename".to_string(),
+        "icon".to_string(),
+        "size".to_string(),
+        "modified".to_string(),
+        "owner".to_string(),
+        "group".to_string(),
+        "nlink".to_string(),
+        "permissions".to_string(),
+    ]
 }
 
 fn default_directory_icon() -> String {

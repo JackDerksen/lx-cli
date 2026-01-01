@@ -22,58 +22,117 @@ pub fn format_long(entries: Vec<FileEntry>, config: &Config) {
     all_entries.extend(executables);
     all_entries.extend(regular_files);
 
-    // Calculate column widths for alignment
-    let max_nlink_width = all_entries
-        .iter()
-        .map(|e| e.nlink.to_string().len())
-        .max()
-        .unwrap_or(0);
+    print_long_entries(&all_entries, config, "");
+}
 
-    let max_owner_width = all_entries.iter().map(|e| e.owner.len()).max().unwrap_or(0);
+pub fn print_long_entries(entries: &[FileEntry], config: &Config, prefix: &str) {
+    if entries.is_empty() {
+        return;
+    }
 
-    let max_group_width = all_entries.iter().map(|e| e.group.len()).max().unwrap_or(0);
+    let fields = &config.display.long_format_fields;
+    let widths = calculate_column_widths(entries, fields);
+    print_long_entries_with_widths(entries, config, prefix, fields, &widths);
+}
 
-    let max_size_width = all_entries
-        .iter()
-        .map(|e| e.format_size().len())
-        .max()
-        .unwrap_or(0);
+pub fn calculate_column_widths(
+    entries: &[FileEntry],
+    fields: &[String],
+) -> std::collections::HashMap<String, usize> {
+    let mut max_widths: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
-    // Format: <permissions> <nlink> <owner> <group> <size> <date> <icon> <name>
-    // TODO: Allow users to change this order in the config
-    for entry in all_entries {
-        let permissions = entry.format_permissions();
-        let nlink = entry.nlink.to_string();
-        let owner = &entry.owner;
-        let group = &entry.group;
-        let size = entry.format_size();
-        let modified = entry.format_modified();
-        let icon = entry.get_icon_custom(&config.icons);
-        let filename = entry.path.to_string_lossy();
-        let icon_color = entry.get_icon_color(&config.icons.colors);
-
-        // Apply bold to directories and executables, regular style to files
-        let filename_colored = match entry.get_file_type() {
-            FileType::Directory | FileType::Executable => {
-                filename.color(entry.get_color(&config.colors)).bold()
-            }
-            FileType::RegularFile => filename.color(entry.get_color(&config.colors)),
+    for field in fields {
+        let width = match field.as_str() {
+            "nlink" => entries
+                .iter()
+                .map(|e| e.nlink.to_string().len())
+                .max()
+                .unwrap_or(0),
+            "owner" => entries.iter().map(|e| e.owner.len()).max().unwrap_or(0),
+            "group" => entries.iter().map(|e| e.group.len()).max().unwrap_or(0),
+            "size" => entries
+                .iter()
+                .map(|e| e.format_size().len())
+                .max()
+                .unwrap_or(0),
+            "filename" => entries
+                .iter()
+                .map(|e| e.path.to_string_lossy().len())
+                .max()
+                .unwrap_or(0),
+            "permissions" => entries
+                .iter()
+                .map(|e| e.format_permissions().len())
+                .max()
+                .unwrap_or(0),
+            _ => 0,
         };
+        max_widths.insert(field.clone(), width);
+    }
 
-        println!(
-            "{}  {:>nlink_width$}  {:<owner_width$}  {:<group_width$}  {:>size_width$}  {}  {} {}",
-            permissions,
-            nlink,
-            owner,
-            group,
-            size,
-            modified,
-            icon.color(icon_color),
-            filename_colored,
-            nlink_width = max_nlink_width,
-            owner_width = max_owner_width,
-            group_width = max_group_width,
-            size_width = max_size_width,
-        );
+    max_widths
+}
+
+pub fn print_long_entries_with_widths(
+    entries: &[FileEntry],
+    config: &Config,
+    prefix: &str,
+    fields: &[String],
+    widths: &std::collections::HashMap<String, usize>,
+) {
+    // Print each entry
+    for entry in entries {
+        let mut output_parts: Vec<String> = Vec::new();
+
+        for (idx, field) in fields.iter().enumerate() {
+            let part = match field.as_str() {
+                "permissions" => entry.format_permissions(),
+                "nlink" => {
+                    let width = widths.get("nlink").copied().unwrap_or(0);
+                    format!("{:>width$}", entry.nlink.to_string(), width = width)
+                }
+                "owner" => {
+                    let width = widths.get("owner").copied().unwrap_or(0);
+                    format!("{:<width$}", entry.owner, width = width)
+                }
+                "group" => {
+                    let width = widths.get("group").copied().unwrap_or(0);
+                    format!("{:<width$}", entry.group, width = width)
+                }
+                "size" => {
+                    let width = widths.get("size").copied().unwrap_or(0);
+                    format!("{:>width$}", entry.format_size(), width = width)
+                }
+                "modified" => entry.format_modified(),
+                "icon" => {
+                    let icon = entry.get_icon_custom(&config.icons);
+                    let icon_color = entry.get_icon_color(&config.icons.colors);
+                    format!("{}", icon.color(icon_color))
+                }
+                "filename" => {
+                    let filename_str = entry.path.to_string_lossy().to_string();
+                    let width = widths.get("filename").copied().unwrap_or(0);
+
+                    // Pad filename before applying color
+                    let padded = if idx < fields.len() - 1 {
+                        format!("{:<width$}", filename_str, width = width)
+                    } else {
+                        filename_str
+                    };
+
+                    let filename_colored = match entry.get_file_type() {
+                        FileType::Directory | FileType::Executable => {
+                            padded.color(entry.get_color(&config.colors)).bold()
+                        }
+                        FileType::RegularFile => padded.color(entry.get_color(&config.colors)),
+                    };
+                    format!("{}", filename_colored)
+                }
+                _ => String::new(),
+            };
+            output_parts.push(part);
+        }
+
+        println!("{}{}", prefix, output_parts.join("  "));
     }
 }

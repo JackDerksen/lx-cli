@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::file_entry::FileEntry;
+use crate::formatter::long::{calculate_column_widths, print_long_entries_with_widths};
 use colored::Colorize;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -98,7 +99,7 @@ fn print_directory_tree(
                     );
                 } else {
                     // Nested-style output (inline indentation for subdirectories)
-                    // Collect FileEntry objects for long format
+                    // Collect FileEntry objects for long format, separating files and dirs
                     let mut file_entries: Vec<(FileEntry, std::path::PathBuf)> = Vec::new();
 
                     for entry in entries.iter() {
@@ -127,83 +128,36 @@ fn print_directory_tree(
                         }
                     }
 
-                    // Use the format_long function logic
-                    if !file_entries.is_empty() {
-                        let max_nlink_width = file_entries
-                            .iter()
-                            .map(|(e, _)| e.nlink.to_string().len())
-                            .max()
-                            .unwrap_or(0);
+                    // Calculate widths once for all entries at this level
+                    let entries_only: Vec<FileEntry> =
+                        file_entries.iter().map(|(e, _)| e.clone()).collect();
+                    let fields = &config.display.long_format_fields;
+                    let widths = calculate_column_widths(&entries_only, fields);
 
-                        let max_owner_width = file_entries
-                            .iter()
-                            .map(|(e, _)| e.owner.len())
-                            .max()
-                            .unwrap_or(0);
+                    // Print each entry and recurse into directories immediately after
+                    for (entry, entry_path) in &file_entries {
+                        // Print this entry using pre-calculated widths
+                        let single_entry = vec![entry.clone()];
+                        print_long_entries_with_widths(
+                            &single_entry,
+                            config,
+                            prefix,
+                            fields,
+                            &widths,
+                        );
 
-                        let max_group_width = file_entries
-                            .iter()
-                            .map(|(e, _)| e.group.len())
-                            .max()
-                            .unwrap_or(0);
-
-                        let max_size_width = file_entries
-                            .iter()
-                            .map(|(e, _)| e.format_size().len())
-                            .max()
-                            .unwrap_or(0);
-
-                        for (entry, entry_path) in &file_entries {
-                            let permissions = entry.format_permissions();
-                            let nlink = entry.nlink.to_string();
-                            let owner = &entry.owner;
-                            let group = &entry.group;
-                            let size = entry.format_size();
-                            let modified = entry.format_modified();
-                            let icon = entry.get_icon_custom(&config.icons);
-                            let filename = entry.path.to_string_lossy();
-                            let icon_color = entry.get_icon_color(&config.icons.colors);
-
-                            let filename_colored = match entry.get_file_type() {
-                                crate::file_entry::FileType::Directory
-                                | crate::file_entry::FileType::Executable => {
-                                    filename.color(entry.get_color(&config.colors)).bold()
-                                }
-                                crate::file_entry::FileType::RegularFile => {
-                                    filename.color(entry.get_color(&config.colors))
-                                }
-                            };
-
-                            println!(
-                                "{}{}  {:>nlink_width$}  {:<owner_width$}  {:<group_width$}  {:>size_width$}  {}  {} {}",
-                                prefix,
-                                permissions,
-                                nlink,
-                                owner,
-                                group,
-                                size,
-                                modified,
-                                icon.color(icon_color),
-                                filename_colored,
-                                nlink_width = max_nlink_width,
-                                owner_width = max_owner_width,
-                                group_width = max_group_width,
-                                size_width = max_size_width,
+                        // If it's a directory, recurse into it immediately
+                        if entry.is_dir {
+                            let new_prefix = format!("{}    ", prefix);
+                            print_directory_tree(
+                                &entry_path,
+                                config,
+                                show_hidden,
+                                &new_prefix,
+                                tree_style,
+                                use_long_format,
+                                recursive_long_style,
                             );
-
-                            // If it's a directory, recurse into it with indentation
-                            if entry.is_dir {
-                                let new_prefix = format!("{}    ", prefix);
-                                print_directory_tree(
-                                    &entry_path,
-                                    config,
-                                    show_hidden,
-                                    &new_prefix,
-                                    tree_style,
-                                    use_long_format,
-                                    recursive_long_style,
-                                );
-                            }
                         }
                     }
                 }
@@ -337,91 +291,27 @@ fn print_long_format_with_headers(
         }
     }
 
-    // Use the format_long function logic
-    if !file_entries.is_empty() {
-        let max_nlink_width = file_entries
-            .iter()
-            .map(|(e, _)| e.nlink.to_string().len())
-            .max()
-            .unwrap_or(0);
-
-        let max_owner_width = file_entries
-            .iter()
-            .map(|(e, _)| e.owner.len())
-            .max()
-            .unwrap_or(0);
-
-        let max_group_width = file_entries
-            .iter()
-            .map(|(e, _)| e.group.len())
-            .max()
-            .unwrap_or(0);
-
-        let max_size_width = file_entries
-            .iter()
-            .map(|(e, _)| e.format_size().len())
-            .max()
-            .unwrap_or(0);
-
-        for (entry, _entry_path) in &file_entries {
-            let permissions = entry.format_permissions();
-            let nlink = entry.nlink.to_string();
-            let owner = &entry.owner;
-            let group = &entry.group;
-            let size = entry.format_size();
-            let modified = entry.format_modified();
-            let icon = entry.get_icon_custom(&config.icons);
-            let filename = entry.path.to_string_lossy();
-            let icon_color = entry.get_icon_color(&config.icons.colors);
-
-            let filename_colored = match entry.get_file_type() {
-                crate::file_entry::FileType::Directory
-                | crate::file_entry::FileType::Executable => {
-                    filename.color(entry.get_color(&config.colors)).bold()
-                }
-                crate::file_entry::FileType::RegularFile => {
-                    filename.color(entry.get_color(&config.colors))
-                }
-            };
-
-            println!(
-                "{}  {:>nlink_width$}  {:<owner_width$}  {:<group_width$}  {:>size_width$}  {}  {} {}",
-                permissions,
-                nlink,
-                owner,
-                group,
-                size,
-                modified,
-                icon.color(icon_color),
-                filename_colored,
-                nlink_width = max_nlink_width,
-                owner_width = max_owner_width,
-                group_width = max_group_width,
-                size_width = max_size_width,
-            );
-        }
+    // Use the new print_long_entries function for configurable field ordering
+    let file_entries_only: Vec<FileEntry> = file_entries.iter().map(|(e, _)| e.clone()).collect();
+    if !file_entries_only.is_empty() {
+        let fields = &config.display.long_format_fields;
+        let widths = calculate_column_widths(&file_entries_only, fields);
+        print_long_entries_with_widths(&file_entries_only, config, "", fields, &widths);
     }
 
     // Recurse into directories
-    for entry in entries.iter() {
-        let entry_path = entry.path();
-        if let Ok(metadata) = entry.metadata() {
-            if metadata.is_dir() {
-                let file_name = entry.file_name();
-                let file_name_str = file_name.to_string_lossy();
-                if !show_hidden || !file_name_str.starts_with('.') {
-                    println!();
-                    print_directory_tree(
-                        &entry_path,
-                        config,
-                        show_hidden,
-                        &format!("{}  ", prefix),
-                        tree_style,
-                        true,
-                        recursive_long_style,
-                    );
-                }
-            }
+    for (entry, entry_path) in &file_entries {
+        if entry.is_dir {
+            let new_prefix = format!("{}    ", prefix);
+            print_directory_tree(
+                &entry_path,
+                config,
+                show_hidden,
+                &new_prefix,
+                tree_style,
+                true,
+                recursive_long_style,
+            );
         }
     }
 }

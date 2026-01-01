@@ -69,3 +69,29 @@ style = "ascii"
 # - "nested": Shows subdirectories indented under their parent directory in the same output
 # - "header": Shows each directory as a separate section with the path as a header
 recursive_long_format = "nested"
+
+# Long format field ordering and visibility (used with -l flag)
+# Specify which fields to display and in what order. Available fields:
+# - filename: The name of the file
+# - icon: The file icon
+# - permissions: File permissions (e.g., drwxr-xr-x)
+# - nlink: Number of hard links
+# - owner: File owner name
+# - group: File group name
+# - size: File size (human-readable)
+# - modified: Last modified date and time
+#
+# Default order (most readable with nested recursive output):
+# [filename, icon, size, modified, owner, group, nlink, permissions]
+#
+# To customize, list the fields you want in your desired order:
+long_format_fields = [
+    "filename",
+    "icon",
+    "size",
+    "modified",
+    "owner",
+    "group",
+    "nlink",
+    "permissions",
+]
