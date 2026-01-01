@@ -7,7 +7,6 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 - 🎨 **Colorized output** with file type icons
 - 📊 **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), and tree view (`-r`)
 - 👻 **Hidden files support**: use `-a` to show all files
-- 🔤 **Flexible sorting**: sort by name, size, date, or type with `-s`
 - 🌳 **Recursive tree view**: display directory hierarchies with `-r`
 - ⚙️ **Configurable**: customize colors, spacing, display options, and tree styles
 - 📏 **Smart alignment**: properly handles unicode characters and icons
@@ -83,17 +82,8 @@ lx -1
 # Show directory tree recursively
 lx -r
 
-# Sort by size (largest first)
-lx -s size
-
-# Sort by modification date (newest first)
-lx -s date
-
-# Sort by file type (directories, executables, files)
-lx -s type
-
 # Combine flags
-lx -l -a -s size
+lx -l -a size
 
 # List files in a specific directory
 lx /path/to/directory
@@ -105,7 +95,6 @@ lx /path/to/directory
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
 - `-1`: Force single column output (useful for piping to other commands)
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy
-- `-s`, `--sort <FIELD>`: Sort by field: `name` (default), `size`, `date`, or `type`
 
 ## Configuration
 
