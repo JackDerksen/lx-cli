@@ -158,15 +158,15 @@ fn default_long_format_fields() -> Vec<String> {
 }
 
 fn default_directory_icon() -> String {
-    "".to_string()
+    "".to_string()
 }
 
 fn default_executable_icon() -> String {
-    "".to_string()
+    "".to_string()
 }
 
 fn default_regular_icon() -> String {
-    "".to_string()
+    "".to_string()
 }
 
 fn default_directory_icon_color() -> String {
