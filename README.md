@@ -74,6 +74,11 @@ export PATH="$HOME/.local/bin:$PATH"
 
 Add this to your shell configuration file (`.bashrc`, `.zshrc`, etc.) to make it permanent.
 
+On NetBSD a package is available from the official repositories. To install it, simply run:
+```bash
+pkgin install lx-cli
+```
+
 ## Quick Start
 
 After installation, simply run:
