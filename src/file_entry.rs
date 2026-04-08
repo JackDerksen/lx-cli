@@ -29,10 +29,6 @@ impl FileEntry {
         }
     }
 
-    pub fn get_icon(&self) -> String {
-        self.get_file_icon().as_str().to_string()
-    }
-
     pub fn get_icon_custom(&self, config: &IconConfig) -> String {
         self.get_file_icon().as_str_custom(config)
     }
@@ -96,16 +92,8 @@ impl FileEntry {
     }
 
     pub fn format_modified(&self) -> String {
-        use std::time::UNIX_EPOCH;
-
-        if let Ok(duration) = self.modified.duration_since(UNIX_EPOCH) {
-            let secs = duration.as_secs();
-            let datetime = chrono::DateTime::from_timestamp(secs as i64, 0)
-                .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
-            datetime.format("%Y-%m-%d %H:%M:%S").to_string()
-        } else {
-            "Unknown".to_string()
-        }
+        let datetime: chrono::DateTime<chrono::Local> = self.modified.into();
+        datetime.format("%Y-%m-%d %H:%M:%S").to_string()
     }
 }
 

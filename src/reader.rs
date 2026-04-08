@@ -1,68 +1,149 @@
 /// Handles directory traversal and gathering file metadata.
 use crate::file_entry::FileEntry;
+use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn read_directory(target_path: &Path, show_hidden: bool) -> io::Result<Vec<FileEntry>> {
-    let mut entries: Vec<FileEntry> = Vec::new();
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MetadataMode {
+    Basic,
+    Full,
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscoveredEntry {
+    pub entry: FileEntry,
+    pub full_path: PathBuf,
+}
+
+#[derive(Default)]
+struct UserGroupCache {
+    users: HashMap<u32, String>,
+    groups: HashMap<u32, String>,
+}
+
+pub fn read_target(
+    target_path: &Path,
+    show_hidden: bool,
+    metadata_mode: MetadataMode,
+) -> io::Result<Vec<FileEntry>> {
+    if target_path.is_dir() {
+        return Ok(
+            read_directory_entries(target_path, show_hidden, metadata_mode)?
+                .into_iter()
+                .map(|entry| entry.entry)
+                .collect(),
+        );
+    }
+
+    let mut cache = UserGroupCache::default();
+    Ok(vec![read_file_entry(
+        target_path,
+        metadata_mode,
+        &mut cache,
+    )?])
+}
+
+pub fn read_directory_entries(
+    target_path: &Path,
+    show_hidden: bool,
+    metadata_mode: MetadataMode,
+) -> io::Result<Vec<DiscoveredEntry>> {
+    let mut entries = Vec::new();
+    let mut cache = UserGroupCache::default();
 
     for entry in fs::read_dir(target_path)? {
         let entry = entry?;
-        let path = entry.path();
+        let file_name = entry.file_name();
 
-        // Skip hidden files unless show_hidden is true
-        if !show_hidden {
-            if let Some(filename) = path.file_name() {
-                // Use as_encoded_bytes() to handle non-UTF-8 filenames
-                // Files starting with '.' are hidden on Unix systems
-                if filename.as_encoded_bytes().starts_with(b".") {
-                    continue;
-                }
-            }
+        if !show_hidden && is_hidden(&file_name) {
+            continue;
         }
 
+        let full_path = entry.path();
         let metadata = entry.metadata()?;
-        let is_dir = metadata.is_dir();
-        let is_executable = !is_dir && (metadata.permissions().mode() & 0o111) != 0;
+        let entry = build_file_entry(file_name, &metadata, metadata_mode, &mut cache);
 
-        // Get owner name
-        let uid = metadata.uid();
-        let owner = get_username(uid);
-
-        // Get group name
-        let gid = metadata.gid();
-        let group = get_groupname(gid);
-
-        // Get number of hard links
-        let nlink = metadata.nlink();
-
-        // Get modification time
-        let modified = metadata
-            .modified()
-            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-
-        // Get size
-        let size = metadata.len();
-
-        entries.push(FileEntry {
-            path: path.file_name().unwrap().to_os_string(),
-            is_dir,
-            is_executable,
-            mode: metadata.permissions().mode(),
-            size,
-            modified,
-            owner,
-            group,
-            nlink,
-        });
+        entries.push(DiscoveredEntry { entry, full_path });
     }
 
     Ok(entries)
 }
 
-fn get_username(uid: u32) -> String {
+fn read_file_entry(
+    target_path: &Path,
+    metadata_mode: MetadataMode,
+    cache: &mut UserGroupCache,
+) -> io::Result<FileEntry> {
+    let metadata = fs::metadata(target_path)?;
+    let file_name = target_path
+        .file_name()
+        .unwrap_or(target_path.as_os_str())
+        .to_os_string();
+
+    Ok(build_file_entry(file_name, &metadata, metadata_mode, cache))
+}
+
+fn build_file_entry(
+    path: std::ffi::OsString,
+    metadata: &fs::Metadata,
+    metadata_mode: MetadataMode,
+    cache: &mut UserGroupCache,
+) -> FileEntry {
+    let is_dir = metadata.is_dir();
+    let mode = metadata.permissions().mode();
+    let (owner, group) = match metadata_mode {
+        MetadataMode::Basic => (String::new(), String::new()),
+        MetadataMode::Full => (
+            cache.get_username(metadata.uid()),
+            cache.get_groupname(metadata.gid()),
+        ),
+    };
+
+    FileEntry {
+        path,
+        is_dir,
+        is_executable: !is_dir && (mode & 0o111) != 0,
+        mode,
+        size: metadata.len(),
+        modified: metadata
+            .modified()
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH),
+        owner,
+        group,
+        nlink: metadata.nlink(),
+    }
+}
+
+fn is_hidden(file_name: &std::ffi::OsStr) -> bool {
+    file_name.as_encoded_bytes().starts_with(b".")
+}
+
+impl UserGroupCache {
+    fn get_username(&mut self, uid: u32) -> String {
+        if let Some(username) = self.users.get(&uid) {
+            return username.clone();
+        }
+
+        let username = lookup_username(uid);
+        self.users.insert(uid, username.clone());
+        username
+    }
+
+    fn get_groupname(&mut self, gid: u32) -> String {
+        if let Some(groupname) = self.groups.get(&gid) {
+            return groupname.clone();
+        }
+
+        let groupname = lookup_groupname(gid);
+        self.groups.insert(gid, groupname.clone());
+        groupname
+    }
+}
+
+fn lookup_username(uid: u32) -> String {
     // Try to get username from system, fallback to uid
     #[cfg(unix)]
     {
@@ -80,7 +161,7 @@ fn get_username(uid: u32) -> String {
     uid.to_string()
 }
 
-fn get_groupname(gid: u32) -> String {
+fn lookup_groupname(gid: u32) -> String {
     // Try to get group name from system, fallback to gid
     #[cfg(unix)]
     {

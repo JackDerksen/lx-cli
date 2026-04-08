@@ -92,7 +92,11 @@ pub fn print_long_entries_with_widths(
                 "icon" => {
                     let icon = entry.get_icon_custom(&config.icons);
                     let icon_color = entry.get_icon_color(&config.icons.colors);
-                    format!("{}", icon.color(icon_color))
+                    if icon.is_empty() {
+                        String::new()
+                    } else {
+                        format!("{}", icon.color(icon_color))
+                    }
                 }
                 "filename" => {
                     let filename_str = entry.path.to_string_lossy().to_string();
@@ -118,6 +122,11 @@ pub fn print_long_entries_with_widths(
             output_parts.push(part);
         }
 
-        println!("{}{}", prefix, output_parts.join("  "));
+        let visible_parts: Vec<&str> = output_parts
+            .iter()
+            .map(|part| part.as_str())
+            .filter(|part| !part.is_empty())
+            .collect();
+        println!("{}{}", prefix, visible_parts.join("  "));
     }
 }

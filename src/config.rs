@@ -121,7 +121,7 @@ fn default_directory_color() -> String {
 }
 
 fn default_executable_color() -> String {
-    "green".to_string()
+    "red".to_string()
 }
 
 fn default_regular_color() -> String {
@@ -174,7 +174,7 @@ fn default_directory_icon_color() -> String {
 }
 
 fn default_executable_icon_color() -> String {
-    "green".to_string()
+    "red".to_string()
 }
 
 fn default_regular_icon_color() -> String {

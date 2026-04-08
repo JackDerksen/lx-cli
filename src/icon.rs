@@ -10,14 +10,6 @@ pub enum FileIcon {
 }
 
 impl FileIcon {
-    pub fn as_str(&self) -> &str {
-        match self {
-            FileIcon::Directory => "",
-            FileIcon::Executable => "",
-            FileIcon::RegularFile => "",
-        }
-    }
-
     pub fn as_str_custom(&self, config: &IconConfig) -> String {
         match self {
             FileIcon::Directory => config.get_directory_icon(),

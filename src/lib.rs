@@ -11,5 +11,5 @@ pub use config::{Config, IconConfig};
 pub use file_entry::FileEntry;
 pub use formatter::{format_long, format_short};
 pub use icon::FileIcon;
-pub use reader::read_directory;
+pub use reader::{MetadataMode, read_directory_entries, read_target};
 pub use sort::sort_default;

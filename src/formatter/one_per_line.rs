@@ -23,32 +23,50 @@ pub fn format_one_per_line(mut entries: Vec<FileEntry>, config: &Config) {
     for entry in directories {
         let filename = entry.path.to_string_lossy();
         let icon = entry.get_icon_custom(&config.icons);
-        println!(
-            "{} {}",
-            icon.color(entry.get_icon_color(&config.icons.colors)),
-            filename.color(entry.get_color(&config.colors)).bold()
-        );
+        let filename_colored = filename.color(entry.get_color(&config.colors)).bold();
+
+        if icon.is_empty() {
+            println!("{}", filename_colored);
+        } else {
+            println!(
+                "{} {}",
+                icon.color(entry.get_icon_color(&config.icons.colors)),
+                filename_colored
+            );
+        }
     }
 
     // Print executables
     for entry in executables {
         let filename = entry.path.to_string_lossy();
         let icon = entry.get_icon_custom(&config.icons);
-        println!(
-            "{} {}",
-            icon.color(entry.get_icon_color(&config.icons.colors)),
-            filename.color(entry.get_color(&config.colors)).bold()
-        );
+        let filename_colored = filename.color(entry.get_color(&config.colors)).bold();
+
+        if icon.is_empty() {
+            println!("{}", filename_colored);
+        } else {
+            println!(
+                "{} {}",
+                icon.color(entry.get_icon_color(&config.icons.colors)),
+                filename_colored
+            );
+        }
     }
 
     // Print regular files
     for entry in regular_files {
         let filename = entry.path.to_string_lossy();
         let icon = entry.get_icon_custom(&config.icons);
-        println!(
-            "{} {}",
-            icon.color(entry.get_icon_color(&config.icons.colors)),
-            filename.color(entry.get_color(&config.colors))
-        );
+        let filename_colored = filename.color(entry.get_color(&config.colors));
+
+        if icon.is_empty() {
+            println!("{}", filename_colored);
+        } else {
+            println!(
+                "{} {}",
+                icon.color(entry.get_icon_color(&config.icons.colors)),
+                filename_colored
+            );
+        }
     }
 }

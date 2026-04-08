@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
 use crate::sort::sort_default;
-use colored::Colorize;
+use colored::{ColoredString, Colorize};
 use unicode_width::UnicodeWidthStr;
 
 pub fn format_short(mut entries: Vec<FileEntry>, config: &Config) {
@@ -45,6 +45,24 @@ pub fn format_short(mut entries: Vec<FileEntry>, config: &Config) {
     }
 }
 
+fn format_entry(
+    icon: &str,
+    icon_colored: ColoredString,
+    filename_colored: ColoredString,
+) -> String {
+    if icon.is_empty() {
+        format!("{}", filename_colored)
+    } else {
+        format!("{} {}", icon_colored, filename_colored)
+    }
+}
+
+fn display_width(icon: &str, filename: &str) -> usize {
+    UnicodeWidthStr::width(icon)
+        + if icon.is_empty() { 0 } else { 1 }
+        + UnicodeWidthStr::width(filename)
+}
+
 fn format_with_max_rows(
     directories: Vec<FileEntry>,
     executables: Vec<FileEntry>,
@@ -77,9 +95,8 @@ fn format_with_max_rows(
         .iter()
         .map(|e| {
             let filename = e.path.to_string_lossy();
-            UnicodeWidthStr::width(e.get_icon().as_str())
-                + 1
-                + UnicodeWidthStr::width(filename.as_ref())
+            let icon = e.get_icon_custom(&config.icons);
+            display_width(icon.as_str(), filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -88,9 +105,8 @@ fn format_with_max_rows(
         .iter()
         .map(|e| {
             let filename = e.path.to_string_lossy();
-            UnicodeWidthStr::width(e.get_icon().as_str())
-                + 1
-                + UnicodeWidthStr::width(filename.as_ref())
+            let icon = e.get_icon_custom(&config.icons);
+            display_width(icon.as_str(), filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -99,9 +115,8 @@ fn format_with_max_rows(
         .iter()
         .map(|e| {
             let filename = e.path.to_string_lossy();
-            UnicodeWidthStr::width(e.get_icon().as_str())
-                + 1
-                + UnicodeWidthStr::width(filename.as_ref())
+            let icon = e.get_icon_custom(&config.icons);
+            display_width(icon.as_str(), filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -123,14 +138,12 @@ fn format_with_max_rows(
                     let entry = &directories[idx];
                     let filename = entry.path.to_string_lossy();
                     let icon = entry.get_icon_custom(&config.icons);
-                    let actual_width = UnicodeWidthStr::width(icon.as_str())
-                        + 1
-                        + UnicodeWidthStr::width(filename.as_ref());
+                    let actual_width = display_width(icon.as_str(), filename.as_ref());
 
-                    line.push_str(&format!(
-                        "{} {}",
+                    line.push_str(&format_entry(
+                        icon.as_str(),
                         icon.color(entry.get_icon_color(&config.icons.colors)),
-                        filename.color(entry.get_color(&config.colors)).bold()
+                        filename.color(entry.get_color(&config.colors)).bold(),
                     ));
 
                     if actual_width < dir_width {
@@ -163,14 +176,12 @@ fn format_with_max_rows(
                     let entry = &executables[idx];
                     let filename = entry.path.to_string_lossy();
                     let icon = entry.get_icon_custom(&config.icons);
-                    let actual_width = UnicodeWidthStr::width(icon.as_str())
-                        + 1
-                        + UnicodeWidthStr::width(filename.as_ref());
+                    let actual_width = display_width(icon.as_str(), filename.as_ref());
 
-                    line.push_str(&format!(
-                        "{} {}",
+                    line.push_str(&format_entry(
+                        icon.as_str(),
                         icon.color(entry.get_icon_color(&config.icons.colors)),
-                        filename.color(entry.get_color(&config.colors)).bold()
+                        filename.color(entry.get_color(&config.colors)).bold(),
                     ));
 
                     if actual_width < exec_width {
@@ -202,14 +213,12 @@ fn format_with_max_rows(
                     let entry = &regular_files[idx];
                     let filename = entry.path.to_string_lossy();
                     let icon = entry.get_icon_custom(&config.icons);
-                    let actual_width = UnicodeWidthStr::width(icon.as_str())
-                        + 1
-                        + UnicodeWidthStr::width(filename.as_ref());
+                    let actual_width = display_width(icon.as_str(), filename.as_ref());
 
-                    line.push_str(&format!(
-                        "{} {}",
+                    line.push_str(&format_entry(
+                        icon.as_str(),
                         icon.color(entry.get_icon_color(&config.icons.colors)),
-                        filename.color(entry.get_color(&config.colors))
+                        filename.color(entry.get_color(&config.colors)),
                     ));
 
                     if col < file_num_cols - 1 && actual_width < file_width {
@@ -239,7 +248,7 @@ fn format_single_column_per_type(
         .map(|e| {
             let filename = e.path.to_string_lossy();
             let icon = e.get_icon_custom(&config.icons);
-            UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
+            display_width(icon.as_str(), filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -249,7 +258,7 @@ fn format_single_column_per_type(
         .map(|e| {
             let filename = e.path.to_string_lossy();
             let icon = e.get_icon_custom(&config.icons);
-            UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
+            display_width(icon.as_str(), filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -259,7 +268,7 @@ fn format_single_column_per_type(
         .map(|e| {
             let filename = e.path.to_string_lossy();
             let icon = e.get_icon_custom(&config.icons);
-            UnicodeWidthStr::width(icon.as_str()) + 1 + UnicodeWidthStr::width(filename.as_ref())
+            display_width(icon.as_str(), filename.as_ref())
         })
         .max()
         .unwrap_or(0);
@@ -280,14 +289,12 @@ fn format_single_column_per_type(
                 let entry = &directories[i];
                 let filename = entry.path.to_string_lossy();
                 let icon = entry.get_icon_custom(&config.icons);
-                let actual_width = UnicodeWidthStr::width(icon.as_str())
-                    + 1
-                    + UnicodeWidthStr::width(filename.as_ref());
+                let actual_width = display_width(icon.as_str(), filename.as_ref());
 
-                line.push_str(&format!(
-                    "{} {}",
+                line.push_str(&format_entry(
+                    icon.as_str(),
                     icon.color(entry.get_icon_color(&config.icons.colors)),
-                    filename.color(entry.get_color(&config.colors)).bold()
+                    filename.color(entry.get_color(&config.colors)).bold(),
                 ));
                 // Add padding after the colored text
                 if actual_width < dir_width {
@@ -310,14 +317,12 @@ fn format_single_column_per_type(
                 let entry = &executables[i];
                 let filename = entry.path.to_string_lossy();
                 let icon = entry.get_icon_custom(&config.icons);
-                let actual_width = UnicodeWidthStr::width(icon.as_str())
-                    + 1
-                    + UnicodeWidthStr::width(filename.as_ref());
+                let actual_width = display_width(icon.as_str(), filename.as_ref());
 
-                line.push_str(&format!(
-                    "{} {}",
+                line.push_str(&format_entry(
+                    icon.as_str(),
                     icon.color(entry.get_icon_color(&config.icons.colors)),
-                    filename.color(entry.get_color(&config.colors)).bold()
+                    filename.color(entry.get_color(&config.colors)).bold(),
                 ));
                 // Add padding after the colored text
                 if actual_width < exec_width {
@@ -339,14 +344,12 @@ fn format_single_column_per_type(
             let entry = &regular_files[i];
             let filename = entry.path.to_string_lossy();
             let icon = entry.get_icon_custom(&config.icons);
-            let actual_width = UnicodeWidthStr::width(icon.as_str())
-                + 1
-                + UnicodeWidthStr::width(filename.as_ref());
+            let actual_width = display_width(icon.as_str(), filename.as_ref());
 
-            line.push_str(&format!(
-                "{} {}",
+            line.push_str(&format_entry(
+                icon.as_str(),
                 icon.color(entry.get_icon_color(&config.icons.colors)),
-                filename.color(entry.get_color(&config.colors))
+                filename.color(entry.get_color(&config.colors)),
             ));
             // Add padding after the colored text
             if actual_width < file_width {

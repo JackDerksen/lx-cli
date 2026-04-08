@@ -7,31 +7,47 @@ mod reader;
 mod sort;
 
 use clap::Parser;
+use std::io;
 use std::path::Path;
 
 use cli::Args;
 use config::load_config;
 use formatter::{format_long, format_one_per_line, format_recursive, format_short};
-use reader::read_directory;
+use reader::{MetadataMode, read_target};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
+    if let Err(error) = run() {
+        eprintln!("{}", error);
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let config = load_config();
 
     let target_path = Path::new(&args.target);
 
     if !target_path.exists() {
-        eprintln!(
-            "lx: cannot access '{}': No such file or directory",
-            args.target
-        );
-        return Ok(());
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!(
+                "lx: cannot access '{}': No such file or directory",
+                args.target
+            ),
+        )
+        .into());
     }
 
     if args.recursive {
         format_recursive(target_path, &config, args.show_hidden, args.long);
     } else {
-        let entries = read_directory(target_path, args.show_hidden)?;
+        let metadata_mode = if args.long {
+            MetadataMode::Full
+        } else {
+            MetadataMode::Basic
+        };
+        let entries = read_target(target_path, args.show_hidden, metadata_mode)?;
 
         if args.long {
             format_long(entries, &config);
