@@ -2,6 +2,7 @@ mod long;
 mod one_per_line;
 mod recursive;
 mod short;
+mod tree;
 
 pub use long::format_long;
 pub use one_per_line::format_one_per_line;

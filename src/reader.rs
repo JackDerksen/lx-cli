@@ -72,6 +72,11 @@ pub fn read_directory_entries(
     Ok(entries)
 }
 
+pub(crate) fn read_entry(target_path: &Path, metadata_mode: MetadataMode) -> io::Result<FileEntry> {
+    let mut cache = UserGroupCache::default();
+    read_file_entry(target_path, metadata_mode, &mut cache)
+}
+
 fn read_file_entry(
     target_path: &Path,
     metadata_mode: MetadataMode,
@@ -119,7 +124,8 @@ fn build_file_entry(
 }
 
 pub(crate) fn is_hidden(file_name: &std::ffi::OsStr) -> bool {
-    file_name.as_encoded_bytes().starts_with(b".")
+    let bytes = file_name.as_encoded_bytes();
+    bytes.starts_with(b".") && bytes != b"." && bytes != b".."
 }
 
 impl UserGroupCache {

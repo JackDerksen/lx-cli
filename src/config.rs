@@ -163,14 +163,14 @@ fn default_recursive_long_format() -> String {
 
 fn default_long_format_fields() -> Vec<String> {
     vec![
-        "filename".to_string(),
-        "icon".to_string(),
-        "size".to_string(),
-        "modified".to_string(),
+        "permissions".to_string(),
+        "nlink".to_string(),
         "owner".to_string(),
         "group".to_string(),
-        "nlink".to_string(),
-        "permissions".to_string(),
+        "size".to_string(),
+        "modified".to_string(),
+        "icon".to_string(),
+        "filename".to_string(),
     ]
 }
 

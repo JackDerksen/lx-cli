@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
 use crate::sort::sort_default;
 use colored::Colorize;
+use unicode_width::UnicodeWidthStr;
 
 pub fn format_long(mut entries: Vec<FileEntry>, config: &Config) {
     // Apply default sorting: by type, then alphabetically (case-insensitive)
@@ -42,7 +43,7 @@ pub fn calculate_column_widths(
                 .unwrap_or(0),
             "filename" => entries
                 .iter()
-                .map(|e| e.path.to_string_lossy().len())
+                .map(|e| UnicodeWidthStr::width(e.path.to_string_lossy().as_ref()))
                 .max()
                 .unwrap_or(0),
             "permissions" => entries
@@ -58,6 +59,20 @@ pub fn calculate_column_widths(
     max_widths
 }
 
+pub fn calculate_column_widths_with_filename_prefixes(
+    entries: &[FileEntry],
+    filename_prefixes: &[String],
+    fields: &[String],
+) -> std::collections::HashMap<String, usize> {
+    let mut entries_with_prefixes = entries.to_vec();
+
+    for (entry, filename_prefix) in entries_with_prefixes.iter_mut().zip(filename_prefixes) {
+        entry.path = format!("{filename_prefix}{}", entry.path.to_string_lossy()).into();
+    }
+
+    calculate_column_widths(&entries_with_prefixes, fields)
+}
+
 pub fn print_long_entries_with_widths(
     entries: &[FileEntry],
     config: &Config,
@@ -65,8 +80,38 @@ pub fn print_long_entries_with_widths(
     fields: &[String],
     widths: &std::collections::HashMap<String, usize>,
 ) {
+    print_long_entries_with_optional_filename_prefixes(
+        entries, config, prefix, fields, widths, None,
+    );
+}
+
+pub fn print_long_entries_with_filename_prefixes(
+    entries: &[FileEntry],
+    filename_prefixes: &[String],
+    config: &Config,
+    fields: &[String],
+    widths: &std::collections::HashMap<String, usize>,
+) {
+    print_long_entries_with_optional_filename_prefixes(
+        entries,
+        config,
+        "",
+        fields,
+        widths,
+        Some(filename_prefixes),
+    );
+}
+
+fn print_long_entries_with_optional_filename_prefixes(
+    entries: &[FileEntry],
+    config: &Config,
+    prefix: &str,
+    fields: &[String],
+    widths: &std::collections::HashMap<String, usize>,
+    filename_prefixes: Option<&[String]>,
+) {
     // Print each entry
-    for entry in entries {
+    for (entry_index, entry) in entries.iter().enumerate() {
         let mut output_parts: Vec<String> = Vec::new();
 
         for (idx, field) in fields.iter().enumerate() {
@@ -101,13 +146,20 @@ pub fn print_long_entries_with_widths(
                 "filename" => {
                     let filename_str = entry.path.to_string_lossy().to_string();
                     let width = widths.get("filename").copied().unwrap_or(0);
+                    let filename_prefix = filename_prefixes
+                        .and_then(|prefixes| prefixes.get(entry_index))
+                        .map(String::as_str)
+                        .unwrap_or("");
 
-                    // Pad filename before applying color
-                    let padded = if idx < fields.len() - 1 {
-                        format!("{:<width$}", filename_str, width = width)
+                    let padding = if idx < fields.len() - 1 {
+                        width.saturating_sub(
+                            UnicodeWidthStr::width(filename_prefix)
+                                + UnicodeWidthStr::width(filename_str.as_str()),
+                        )
                     } else {
-                        filename_str
+                        0
                     };
+                    let padded = format!("{filename_str}{}", " ".repeat(padding));
 
                     let filename_colored = match entry.get_file_type() {
                         FileType::Directory | FileType::Executable => {
@@ -115,7 +167,7 @@ pub fn print_long_entries_with_widths(
                         }
                         FileType::RegularFile => padded.color(entry.get_color(&config.colors)),
                     };
-                    format!("{}", filename_colored)
+                    format!("{filename_prefix}{filename_colored}")
                 }
                 _ => String::new(),
             };
