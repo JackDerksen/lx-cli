@@ -61,6 +61,9 @@ column_spacing = 2
 # Only applies to short format (not -l). Set to 0 for no limit (default: 0)
 max_rows = 0
 
+# Maximum number of rows used by compact format (-c) (default: 5)
+compact_max_rows = 5
+
 # Long format field ordering and visibility (used with -l flag)
 # Specify which fields to display and in what order. Available fields:
 # - filename: The name of the file

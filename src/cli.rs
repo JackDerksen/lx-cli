@@ -36,6 +36,14 @@ pub struct Args {
     pub one_per_line: bool,
 
     #[arg(
+        short = 'c',
+        long,
+        help = "Use compact columns with a limited number of rows",
+        conflicts_with_all = ["long", "one_per_line", "recursive"]
+    )]
+    pub compact: bool,
+
+    #[arg(
         short = 'r',
         long = "recursive",
         help = "Show directory tree recursively"
@@ -56,7 +64,13 @@ mod tests {
         assert!(args.long);
         assert!(args.recursive);
         assert_eq!(args.target, ".");
+        assert!(
+            Args::try_parse_from(["lx", "-c"])
+                .expect("parse -c")
+                .compact
+        );
         assert!(Args::try_parse_from(["lx", "-l1"]).is_err());
         assert!(Args::try_parse_from(["lx", "-1r"]).is_err());
+        assert!(Args::try_parse_from(["lx", "-cl"]).is_err());
     }
 }

@@ -99,6 +99,9 @@ lx -a
 # Display one file per line
 lx -1
 
+# Use compact columns, wrapping after five rows by default
+lx -c
+
 # Show directory tree recursively
 lx -r
 
@@ -116,9 +119,10 @@ lx /path/to/directory
 - `-l`, `--long`: Use a long listing format with detailed file information
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
 - `-1`: Force single column output (useful for piping to other commands)
+- `-c`, `--compact`: Use compact columns, wrapping after `compact_max_rows` rows
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy
 
-`-l` and `-1` are treated as separate display modes, so they cannot be combined together. Short flags can still be clustered in the usual Unix style, so combinations like `-la`, `-lr`, and `-alr` work as expected.
+`-l` and `-1` are treated as separate display modes, so they cannot be combined together. `-c` is only available for short output, so it cannot be combined with `-l`, `-1`, or `-r`. Short flags can still be clustered in the usual Unix style, so combinations like `-la`, `-lr`, and `-alr` work as expected.
 
 ## Configuration
 

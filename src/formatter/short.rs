@@ -4,7 +4,15 @@ use crate::sort::sort_default;
 use colored::{ColoredString, Colorize};
 use unicode_width::UnicodeWidthStr;
 
-pub fn format_short(mut entries: Vec<FileEntry>, config: &Config) {
+pub fn format_short(entries: Vec<FileEntry>, config: &Config) {
+    format_short_with_max_rows(entries, config, config.display.max_rows);
+}
+
+pub fn format_short_compact(entries: Vec<FileEntry>, config: &Config) {
+    format_short_with_max_rows(entries, config, config.display.compact_max_rows);
+}
+
+fn format_short_with_max_rows(mut entries: Vec<FileEntry>, config: &Config, max_rows: usize) {
     // Apply default sorting: by type, then alphabetically (case-insensitive)
     sort_default(&mut entries);
 
@@ -21,8 +29,6 @@ pub fn format_short(mut entries: Vec<FileEntry>, config: &Config) {
     }
 
     let column_spacing = config.display.column_spacing;
-    let max_rows = config.display.max_rows;
-
     // If max_rows is set (not 0), format each file type with wrapping
     // Otherwise, use the original single-column-per-type format
     if max_rows > 0 {
@@ -71,168 +77,112 @@ fn format_with_max_rows(
     column_spacing: usize,
     config: &Config,
 ) {
-    // Calculate how many columns needed for each file type
-    let dir_num_cols = if directories.is_empty() {
-        0
-    } else {
-        directories.len().div_ceil(max_rows)
-    };
-
-    let exec_num_cols = if executables.is_empty() {
-        0
-    } else {
-        executables.len().div_ceil(max_rows)
-    };
-
-    let file_num_cols = if regular_files.is_empty() {
-        0
-    } else {
-        regular_files.len().div_ceil(max_rows)
-    };
-
-    // Calculate width for each file type
-    let dir_width = directories
-        .iter()
-        .map(|e| {
-            let filename = e.path.to_string_lossy();
-            let icon = e.get_icon_custom(&config.icons);
-            display_width(icon.as_str(), filename.as_ref())
-        })
-        .max()
-        .unwrap_or(0);
-
-    let exec_width = executables
-        .iter()
-        .map(|e| {
-            let filename = e.path.to_string_lossy();
-            let icon = e.get_icon_custom(&config.icons);
-            display_width(icon.as_str(), filename.as_ref())
-        })
-        .max()
-        .unwrap_or(0);
-
-    let file_width = regular_files
-        .iter()
-        .map(|e| {
-            let filename = e.path.to_string_lossy();
-            let icon = e.get_icon_custom(&config.icons);
-            display_width(icon.as_str(), filename.as_ref())
-        })
-        .max()
-        .unwrap_or(0);
+    let directory_widths = compact_column_widths(&directories, max_rows, config);
+    let executable_widths = compact_column_widths(&executables, max_rows, config);
+    let file_widths = compact_column_widths(&regular_files, max_rows, config);
+    let sections = [
+        (&directories, directory_widths),
+        (&executables, executable_widths),
+        (&regular_files, file_widths),
+    ];
 
     // Print rows, with all file types side-by-side
     for row in 0..max_rows {
         let mut line = String::new();
         let mut has_any_content = false;
+        let mut has_previous_section = false;
 
-        // Directories section
-        if dir_num_cols > 0 {
-            for col in 0..dir_num_cols {
-                let idx = col * max_rows + row;
-                if idx < directories.len() {
-                    if col > 0 {
-                        line.push_str(&" ".repeat(column_spacing));
-                    }
-
-                    let entry = &directories[idx];
-                    let filename = entry.path.to_string_lossy();
-                    let icon = entry.get_icon_custom(&config.icons);
-                    let actual_width = display_width(icon.as_str(), filename.as_ref());
-
-                    line.push_str(&format_entry(
-                        icon.as_str(),
-                        icon.color(entry.get_icon_color(&config.icons.colors)),
-                        filename.color(entry.get_color(&config.colors)).bold(),
-                    ));
-
-                    if actual_width < dir_width {
-                        line.push_str(&" ".repeat(dir_width - actual_width));
-                    }
-                    has_any_content = true;
-                } else if col == 0 {
-                    // Empty row in directories section, but still need spacing for alignment
-                    line.push_str(&" ".repeat(dir_width));
-                } else {
-                    line.push_str(&" ".repeat(column_spacing + dir_width));
-                }
+        for (entries, widths) in &sections {
+            if widths.is_empty() {
+                continue;
             }
 
-            // Add spacing after directories if executables or files exist
-            if exec_num_cols > 0 || file_num_cols > 0 {
+            if has_previous_section {
                 line.push_str(&" ".repeat(column_spacing));
             }
-        }
-
-        // Executables section
-        if exec_num_cols > 0 {
-            for col in 0..exec_num_cols {
-                let idx = col * max_rows + row;
-                if idx < executables.len() {
-                    if col > 0 {
-                        line.push_str(&" ".repeat(column_spacing));
-                    }
-
-                    let entry = &executables[idx];
-                    let filename = entry.path.to_string_lossy();
-                    let icon = entry.get_icon_custom(&config.icons);
-                    let actual_width = display_width(icon.as_str(), filename.as_ref());
-
-                    line.push_str(&format_entry(
-                        icon.as_str(),
-                        icon.color(entry.get_icon_color(&config.icons.colors)),
-                        filename.color(entry.get_color(&config.colors)).bold(),
-                    ));
-
-                    if actual_width < exec_width {
-                        line.push_str(&" ".repeat(exec_width - actual_width));
-                    }
-                    has_any_content = true;
-                } else if col == 0 {
-                    line.push_str(&" ".repeat(exec_width));
-                } else {
-                    line.push_str(&" ".repeat(column_spacing + exec_width));
-                }
-            }
-
-            // Add spacing after executables if files exist
-            if file_num_cols > 0 {
-                line.push_str(&" ".repeat(column_spacing));
-            }
-        }
-
-        // Regular files section
-        if file_num_cols > 0 {
-            for col in 0..file_num_cols {
-                let idx = col * max_rows + row;
-                if idx < regular_files.len() {
-                    if col > 0 {
-                        line.push_str(&" ".repeat(column_spacing));
-                    }
-
-                    let entry = &regular_files[idx];
-                    let filename = entry.path.to_string_lossy();
-                    let icon = entry.get_icon_custom(&config.icons);
-                    let actual_width = display_width(icon.as_str(), filename.as_ref());
-
-                    line.push_str(&format_entry(
-                        icon.as_str(),
-                        icon.color(entry.get_icon_color(&config.icons.colors)),
-                        filename.color(entry.get_color(&config.colors)),
-                    ));
-
-                    if col < file_num_cols - 1 && actual_width < file_width {
-                        line.push_str(&" ".repeat(file_width - actual_width));
-                    }
-                    has_any_content = true;
-                }
-            }
+            has_previous_section = true;
+            has_any_content |= append_compact_section(
+                &mut line,
+                entries,
+                widths,
+                row,
+                max_rows,
+                column_spacing,
+                config,
+            );
         }
 
         if has_any_content {
             println!("{}", line.trim_end());
         }
     }
+}
+
+fn compact_column_widths(entries: &[FileEntry], max_rows: usize, config: &Config) -> Vec<usize> {
+    entries
+        .chunks(max_rows)
+        .map(|column| {
+            column
+                .iter()
+                .map(|entry| entry_width(entry, config))
+                .max()
+                .unwrap_or(0)
+        })
+        .collect()
+}
+
+fn append_compact_section(
+    line: &mut String,
+    entries: &[FileEntry],
+    widths: &[usize],
+    row: usize,
+    max_rows: usize,
+    column_spacing: usize,
+    config: &Config,
+) -> bool {
+    let mut has_content = false;
+
+    for (column, width) in widths.iter().enumerate() {
+        if column > 0 {
+            line.push_str(&" ".repeat(column_spacing));
+        }
+
+        if let Some(entry) = entries.get(column * max_rows + row) {
+            line.push_str(&format_short_entry(entry, config));
+            has_content = true;
+        }
+
+        let actual_width = entries
+            .get(column * max_rows + row)
+            .map(|entry| entry_width(entry, config))
+            .unwrap_or(0);
+        line.push_str(&" ".repeat(width - actual_width));
+    }
+
+    has_content
+}
+
+fn entry_width(entry: &FileEntry, config: &Config) -> usize {
+    let filename = entry.path.to_string_lossy();
+    let icon = entry.get_icon_custom(&config.icons);
+    display_width(icon.as_str(), filename.as_ref())
+}
+
+fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
+    let filename = entry.path.to_string_lossy();
+    let icon = entry.get_icon_custom(&config.icons);
+    let filename_colored = match entry.get_file_type() {
+        FileType::Directory | FileType::Executable => {
+            filename.color(entry.get_color(&config.colors)).bold()
+        }
+        FileType::RegularFile => filename.color(entry.get_color(&config.colors)),
+    };
+
+    format_entry(
+        icon.as_str(),
+        icon.color(entry.get_icon_color(&config.icons.colors)),
+        filename_colored,
+    )
 }
 
 fn format_single_column_per_type(

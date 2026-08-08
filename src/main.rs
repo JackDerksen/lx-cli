@@ -1,6 +1,8 @@
 use clap::Parser;
 use lx_cli::config::load_config;
-use lx_cli::formatter::{format_long, format_one_per_line, format_recursive, format_short};
+use lx_cli::formatter::{
+    format_long, format_one_per_line, format_recursive, format_short, format_short_compact,
+};
 use lx_cli::{Args, MetadataMode, read_target};
 use std::io;
 use std::path::Path;
@@ -43,6 +45,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             format_long(entries, &config);
         } else if args.one_per_line {
             format_one_per_line(entries, &config);
+        } else if args.compact {
+            format_short_compact(entries, &config);
         } else {
             format_short(entries, &config);
         }

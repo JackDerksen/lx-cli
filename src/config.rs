@@ -55,6 +55,8 @@ pub struct DisplayConfig {
     pub column_spacing: usize,
     #[serde(default = "default_max_rows")]
     pub max_rows: usize,
+    #[serde(default = "default_compact_max_rows")]
+    pub compact_max_rows: usize,
     #[serde(default)]
     pub tree: TreeConfig,
     #[serde(default = "default_long_format_fields")]
@@ -116,6 +118,7 @@ impl Default for DisplayConfig {
         DisplayConfig {
             column_spacing: default_column_spacing(),
             max_rows: default_max_rows(),
+            compact_max_rows: default_compact_max_rows(),
             tree: TreeConfig::default(),
             long_format_fields: default_long_format_fields(),
         }
@@ -144,6 +147,10 @@ fn default_column_spacing() -> usize {
 
 fn default_max_rows() -> usize {
     0 // 0 means no limit
+}
+
+fn default_compact_max_rows() -> usize {
+    5
 }
 
 fn default_tree_style() -> String {
