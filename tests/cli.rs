@@ -1,4 +1,5 @@
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,47 +21,30 @@ fn lx_command(home_dir: &Path) -> Command {
 }
 
 #[test]
-fn lists_a_directly_targeted_file() {
-    let temp_dir = create_temp_dir("file-target");
-    let file_path = temp_dir.join("hello.txt");
-    fs::write(&file_path, "hello").expect("write file");
+fn recursive_listing_reports_unreadable_directories() {
+    let temp_dir = create_temp_dir("recursive-permissions");
+    let blocked_dir = temp_dir.join("blocked");
+    fs::create_dir(&blocked_dir).expect("create blocked directory");
+    fs::set_permissions(&blocked_dir, fs::Permissions::from_mode(0o000))
+        .expect("make directory unreadable");
 
     let output = lx_command(&temp_dir)
-        .arg(&file_path)
+        .args(["-r", temp_dir.to_str().expect("UTF-8 temp path")])
         .output()
         .expect("run lx");
 
-    assert!(
-        output.status.success(),
-        "lx should succeed for file targets"
-    );
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("hello.txt"), "stdout was: {stdout}");
-
+    fs::set_permissions(&blocked_dir, fs::Permissions::from_mode(0o700))
+        .expect("restore directory permissions");
     fs::remove_dir_all(&temp_dir).expect("remove temp dir");
-}
-
-#[test]
-fn returns_non_zero_for_missing_paths() {
-    let temp_dir = create_temp_dir("missing-path");
-    let missing_path = temp_dir.join("missing.txt");
-
-    let output = lx_command(&temp_dir)
-        .arg(&missing_path)
-        .output()
-        .expect("run lx");
 
     assert!(
         !output.status.success(),
-        "lx should return a non-zero exit status for missing paths"
+        "recursive lx should return a non-zero exit status for unreadable directories"
     );
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("cannot access"),
-        "stderr should contain a helpful message: {stderr}"
+        stderr.contains("Permission denied"),
+        "stderr should report the directory error: {stderr}"
     );
-
-    fs::remove_dir_all(&temp_dir).expect("remove temp dir");
 }

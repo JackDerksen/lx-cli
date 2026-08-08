@@ -10,6 +10,7 @@ pub struct FileEntry {
     pub path: OsString,
     pub is_dir: bool,
     pub is_executable: bool,
+    pub is_hidden: bool,
     pub mode: u32,
     pub size: u64,
     pub modified: SystemTime,
@@ -34,10 +35,18 @@ impl FileEntry {
     }
 
     pub fn get_color(&self, config: &ColorConfig) -> Color {
+        if self.is_hidden {
+            return config.get_hidden_color();
+        }
+
         self.get_file_icon().get_color(config)
     }
 
     pub fn get_icon_color(&self, config: &IconColorConfig) -> Color {
+        if self.is_hidden {
+            return config.get_hidden_color();
+        }
+
         self.get_file_icon().get_icon_color(config)
     }
 

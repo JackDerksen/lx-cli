@@ -103,6 +103,7 @@ fn build_file_entry(
     };
 
     FileEntry {
+        is_hidden: is_hidden(&path),
         path,
         is_dir,
         is_executable: !is_dir && (mode & 0o111) != 0,
@@ -117,7 +118,7 @@ fn build_file_entry(
     }
 }
 
-fn is_hidden(file_name: &std::ffi::OsStr) -> bool {
+pub(crate) fn is_hidden(file_name: &std::ffi::OsStr) -> bool {
     file_name.as_encoded_bytes().starts_with(b".")
 }
 

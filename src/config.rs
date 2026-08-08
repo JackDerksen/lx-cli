@@ -21,6 +21,8 @@ pub struct ColorConfig {
     pub executable: String,
     #[serde(default = "default_regular_color")]
     pub regular: String,
+    #[serde(default = "default_hidden_color")]
+    pub hidden: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -43,6 +45,8 @@ pub struct IconColorConfig {
     pub executable: String,
     #[serde(default = "default_regular_icon_color")]
     pub regular: String,
+    #[serde(default = "default_hidden_icon_color")]
+    pub hidden: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -91,6 +95,7 @@ impl Default for IconColorConfig {
             directory: default_directory_icon_color(),
             executable: default_executable_icon_color(),
             regular: default_regular_icon_color(),
+            hidden: default_hidden_icon_color(),
         }
     }
 }
@@ -101,6 +106,7 @@ impl Default for ColorConfig {
             directory: default_directory_color(),
             executable: default_executable_color(),
             regular: default_regular_color(),
+            hidden: default_hidden_color(),
         }
     }
 }
@@ -126,6 +132,10 @@ fn default_executable_color() -> String {
 
 fn default_regular_color() -> String {
     "white".to_string()
+}
+
+fn default_hidden_color() -> String {
+    "bright_black".to_string()
 }
 
 fn default_column_spacing() -> usize {
@@ -181,6 +191,10 @@ fn default_regular_icon_color() -> String {
     "white".to_string()
 }
 
+fn default_hidden_icon_color() -> String {
+    "bright_black".to_string()
+}
+
 impl ColorConfig {
     pub fn get_directory_color(&self) -> Color {
         parse_color(&self.directory)
@@ -192,6 +206,10 @@ impl ColorConfig {
 
     pub fn get_regular_color(&self) -> Color {
         parse_color(&self.regular)
+    }
+
+    pub fn get_hidden_color(&self) -> Color {
+        parse_color(&self.hidden)
     }
 }
 
@@ -206,6 +224,10 @@ impl IconColorConfig {
 
     pub fn get_regular_color(&self) -> Color {
         parse_color(&self.regular)
+    }
+
+    pub fn get_hidden_color(&self) -> Color {
+        parse_color(&self.hidden)
     }
 }
 

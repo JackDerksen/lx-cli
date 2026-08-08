@@ -11,10 +11,13 @@
 directory = "blue"
 
 # Color for executable files
-executable = "green"
+executable = "red"
 
 # Color for regular files
 regular = "white"
+
+# Color for hidden files and directories
+hidden = "bright_black"
 
 [icons]
 # Custom icons for different file types
@@ -48,6 +51,7 @@ regular = ""
 directory = "blue"
 executable = "green"
 regular = "white"
+hidden = "bright_black"
 
 [display]
 # Number of spaces between columns (default: 2)
@@ -86,7 +90,7 @@ long_format_fields = [
 [display.tree]
 # Tree display style for recursive output (-r flag)
 # Options: "ascii" (default) or "indent"
-# - "ascii": Uses box-drawing characters (├──, └──, │)
+# - "ascii": Uses box-drawing characters (├─, ╰─, │)
 # - "indent": Uses simple spacing for indentation
 style = "ascii"
 

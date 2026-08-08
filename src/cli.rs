@@ -1,8 +1,19 @@
 /// Defines CLI arguments using `clap`.
-use clap::Parser;
+use clap::{ArgGroup, Parser};
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(
+    author,
+    version,
+    about,
+    long_about = None,
+    group(
+        ArgGroup::new("display_mode")
+            .args(["long", "one_per_line"])
+            .multiple(false)
+    ),
+    after_help = "Examples:\n  lx -la\n  lx -lr\n  lx -alr path/to/dir"
+)]
 pub struct Args {
     #[arg(default_value = ".")]
     pub target: String,
@@ -17,7 +28,11 @@ pub struct Args {
     )]
     pub show_hidden: bool,
 
-    #[arg(short = '1', help = "Force single column output")]
+    #[arg(
+        short = '1',
+        help = "Force single column output",
+        conflicts_with = "recursive"
+    )]
     pub one_per_line: bool,
 
     #[arg(
@@ -26,4 +41,22 @@ pub struct Args {
         help = "Show directory tree recursively"
     )]
     pub recursive: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Args;
+    use clap::Parser;
+
+    #[test]
+    fn handles_short_flag_groups_and_conflicts() {
+        let args = Args::try_parse_from(["lx", "-alr"]).expect("parse -alr");
+
+        assert!(args.show_hidden);
+        assert!(args.long);
+        assert!(args.recursive);
+        assert_eq!(args.target, ".");
+        assert!(Args::try_parse_from(["lx", "-l1"]).is_err());
+        assert!(Args::try_parse_from(["lx", "-1r"]).is_err());
+    }
 }

@@ -4,12 +4,12 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 
 ## Features
 
-- 🎨 **Colorized output** with file type icons
-- 📊 **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), and tree view (`-r`)
-- 👻 **Hidden files support**: use `-a` to show all files
-- 🌳 **Recursive tree view**: display directory hierarchies with `-r`
-- ⚙️ **Configurable**: customize colors, spacing, display options, and tree styles
-- 📏 **Smart alignment**: properly handles unicode characters and icons
+- **Colorized output** with file type icons
+- **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), and tree view (`-r`)
+- **Hidden files support**: use `-a` to show all files
+- **Recursive tree view**: display directory hierarchies with `-r`
+- **Configurable**: customise colours, hidden-file styling, spacing, display options, and tree styles
+- **Smart alignment**: properly handles unicode characters and icons
 
 
 ## Demo
@@ -36,7 +36,7 @@ The '-r' flag can be combined with the '-l' long flag for viewing subdirectory i
 
 ## Requirements
 
-- Rust (>= 1.56.1) and Cargo
+- Rust 1.85 or newer and Cargo
 - Either a [nerd font](https://www.nerdfonts.com/font-downloads) or a terminal like Ghostty which has nerd font icons pre-installed.
 
 ## Installation
@@ -103,7 +103,9 @@ lx -1
 lx -r
 
 # Combine flags
-lx -l -a size
+lx -la src
+lx -lr
+lx -alr /path/to/directory
 
 # List files in a specific directory
 lx /path/to/directory
@@ -116,6 +118,8 @@ lx /path/to/directory
 - `-1`: Force single column output (useful for piping to other commands)
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy
 
+`-l` and `-1` are treated as separate display modes, so they cannot be combined together. Short flags can still be clustered in the usual Unix style, so combinations like `-la`, `-lr`, and `-alr` work as expected.
+
 ## Configuration
 
 `lx` can be customized using a configuration file at `~/.config/lx/config`.
@@ -126,9 +130,9 @@ See [`config.example`](config.example) for all available options and detailed co
 
 The configuration file supports the following sections:
 
-- **`[colors]`**: Customize text colors for different file types
+- **`[colors]`**: Customise text colours for different file types, including hidden files
 - **`[icons]`**: Set custom icons for different file types
-- **`[icons.colors]`**: Customize colors for icons separately from filenames
+- **`[icons.colors]`**: Customise colours for icons separately from filenames, including hidden file icons
 - **`[display]`**: Control layout options like column spacing and multi-column wrapping
 - **`[display.tree]`**: Control tree display style for recursive listings (`style = "ascii"` or `style = "indent"`)
 

@@ -1,19 +1,9 @@
-mod cli;
-mod config;
-mod file_entry;
-mod formatter;
-mod icon;
-mod reader;
-mod sort;
-
 use clap::Parser;
+use lx_cli::config::load_config;
+use lx_cli::formatter::{format_long, format_one_per_line, format_recursive, format_short};
+use lx_cli::{Args, MetadataMode, read_target};
 use std::io;
 use std::path::Path;
-
-use cli::Args;
-use config::load_config;
-use formatter::{format_long, format_one_per_line, format_recursive, format_short};
-use reader::{MetadataMode, read_target};
 
 fn main() {
     if let Err(error) = run() {
@@ -40,7 +30,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.recursive {
-        format_recursive(target_path, &config, args.show_hidden, args.long);
+        format_recursive(target_path, &config, args.show_hidden, args.long)?;
     } else {
         let metadata_mode = if args.long {
             MetadataMode::Full
