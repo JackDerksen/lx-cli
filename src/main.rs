@@ -1,4 +1,3 @@
-use clap::Parser;
 use lx_cli::config::load_config;
 use lx_cli::filter::EntryFilter;
 use lx_cli::formatter::{
@@ -16,8 +15,9 @@ fn main() {
 }
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
+    let args = Args::parse_args();
     let config = load_config();
+    let sort = args.sort_options(config.display.default_sort());
     let filter = EntryFilter::new(args.files, args.directories, args.exclude);
 
     let target_path = Path::new(&args.target);
@@ -34,9 +34,16 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.recursive {
-        format_recursive(target_path, &config, args.show_hidden, args.long, &filter)?;
+        format_recursive(
+            target_path,
+            &config,
+            args.show_hidden,
+            args.long,
+            &filter,
+            sort,
+        )?;
     } else {
-        let metadata_mode = if args.long {
+        let metadata_mode = if args.long || sort.requires_full_metadata() {
             MetadataMode::Full
         } else {
             MetadataMode::Basic
@@ -44,13 +51,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         let entries = filter.apply(read_target(target_path, args.show_hidden, metadata_mode)?);
 
         if args.long {
-            format_long(entries, &config);
+            format_long(entries, &config, sort);
         } else if args.one_per_line {
-            format_one_per_line(entries, &config);
+            format_one_per_line(entries, &config, sort);
         } else if args.compact {
-            format_short_compact(entries, &config);
+            format_short_compact(entries, &config, sort);
         } else {
-            format_short(entries, &config);
+            format_short(entries, &config, sort);
         }
     }
 

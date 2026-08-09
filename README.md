@@ -121,6 +121,9 @@ lx -f
 # Exclude names or glob patterns from a listing
 lx -x '.git,target,Cargo.*'
 
+# Sort by size, largest first
+lx -s size desc
+
 # Combine flags
 lx -la src
 lx -lr
@@ -137,6 +140,8 @@ lx /path/to/directory
 - `-f`, `--files`: Show only files (not available with `-r`)
 - `-d`, `--directories`: Show only directories (not available with `-r`)
 - `-x`, `--exclude <PATTERN>`: Exclude comma-separated names or `*`/`?` glob patterns; repeat the flag to add more patterns
+- `-s`, `--sort <FIELD> [ORDER]`: Sort by `name`, `size`, `modified`, `type`, `permissions`, `links`, `owner`, or `group`; use optional `asc` (the default) or `desc`
+- `--sort-order <ORDER>`: Explicit alternative for specifying `asc` or `desc`; requires `--sort`
 - `-1`: Force single-column output (useful for piping to other commands)
 - `-c`, `--compact`: Use compact columns, wrapping after `compact_max_rows` rows
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy
@@ -156,7 +161,7 @@ The configuration file supports the following sections:
 - **`[colors]`**: Customise text colours for different file types, including hidden files
 - **`[icons]`**: Set custom icons for different file types
 - **`[icons.colors]`**: Customise colours for icons separately from filenames, including hidden file icons
-- **`[display]`**: Control layout options like column spacing and multi-column wrapping
+- **`[display]`**: Control layout options, column wrapping, and default sorting
 - **`[display.tree]`**: Control tree display style for recursive listings (`style = "ascii"` or `style = "indent"`)
 
 For a complete list of available colors, icons, and configuration options, please refer to [`config.example`](config.example).

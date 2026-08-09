@@ -1,20 +1,34 @@
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
-use crate::sort::sort_default;
+use crate::sort::{SortOptions, sort_entries};
 use colored::{ColoredString, Colorize};
 use unicode_width::UnicodeWidthStr;
 
-pub fn format_short(entries: Vec<FileEntry>, config: &Config) {
-    format_short_with_max_rows(entries, config, config.display.max_rows);
+pub fn format_short(entries: Vec<FileEntry>, config: &Config, sort: SortOptions) {
+    format_short_with_max_rows(entries, config, config.display.max_rows, sort);
 }
 
-pub fn format_short_compact(entries: Vec<FileEntry>, config: &Config) {
-    format_short_with_max_rows(entries, config, config.display.compact_max_rows);
+pub fn format_short_compact(entries: Vec<FileEntry>, config: &Config, sort: SortOptions) {
+    format_short_with_max_rows(entries, config, config.display.compact_max_rows, sort);
 }
 
-fn format_short_with_max_rows(mut entries: Vec<FileEntry>, config: &Config, max_rows: usize) {
-    // Apply default sorting: by type, then alphabetically (case-insensitive)
-    sort_default(&mut entries);
+fn format_short_with_max_rows(
+    mut entries: Vec<FileEntry>,
+    config: &Config,
+    max_rows: usize,
+    sort: SortOptions,
+) {
+    sort_entries(&mut entries, sort);
+
+    if sort.is_custom() {
+        let rows = if max_rows == 0 {
+            entries.len().div_ceil(3).max(1)
+        } else {
+            max_rows
+        };
+        format_sorted_entries_with_max_rows(entries, rows, config.display.column_spacing, config);
+        return;
+    }
 
     let mut directories: Vec<FileEntry> = Vec::new();
     let mut executables: Vec<FileEntry> = Vec::new();
@@ -48,6 +62,39 @@ fn format_short_with_max_rows(mut entries: Vec<FileEntry>, config: &Config, max_
             column_spacing,
             config,
         );
+    }
+}
+
+fn format_sorted_entries_with_max_rows(
+    entries: Vec<FileEntry>,
+    max_rows: usize,
+    column_spacing: usize,
+    config: &Config,
+) {
+    let widths = compact_column_widths(&entries, max_rows, config);
+
+    for row in 0..max_rows {
+        let mut line = String::new();
+        let mut has_content = false;
+
+        for (column, width) in widths.iter().enumerate() {
+            if column > 0 {
+                line.push_str(&" ".repeat(column_spacing));
+            }
+
+            if let Some(entry) = entries.get(column * max_rows + row) {
+                line.push_str(&format_short_entry(entry, config));
+                let actual_width = entry_width(entry, config);
+                line.push_str(&" ".repeat(width - actual_width));
+                has_content = true;
+            } else {
+                line.push_str(&" ".repeat(*width));
+            }
+        }
+
+        if has_content {
+            println!("{}", line.trim_end());
+        }
     }
 }
 

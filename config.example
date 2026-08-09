@@ -64,6 +64,11 @@ max_rows = 0
 # Maximum number of rows used by compact format (-c) (default: 5)
 compact_max_rows = 5
 
+# Default sorting. Leave sort_field unset to preserve lx's built-in ordering.
+# Available fields: name, size, modified, type, permissions, links, owner, group
+# sort_field = "modified"
+# sort_order = "desc" # asc (default) or desc
+
 # Long format field ordering and visibility (used with -l flag)
 # Specify which fields to display and in what order. Available fields:
 # - filename: The name of the file

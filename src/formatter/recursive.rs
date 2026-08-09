@@ -6,7 +6,8 @@ use crate::formatter::long::{
 };
 use crate::formatter::tree::{TreeEntry, TreeRenderer};
 use crate::formatter::{format_long, format_one_per_line};
-use crate::reader::{DiscoveredEntry, MetadataMode, read_entry, read_target};
+use crate::reader::{MetadataMode, read_entry, read_target};
+use crate::sort::{DefaultSort, SortOptions};
 use colored::Colorize;
 use std::io;
 use std::path::Path;
@@ -17,9 +18,10 @@ pub fn format_recursive(
     show_hidden: bool,
     use_long_format: bool,
     filter: &EntryFilter,
+    sort: SortOptions,
 ) -> io::Result<()> {
     if !path.is_dir() {
-        let metadata_mode = if use_long_format {
+        let metadata_mode = if use_long_format || sort.requires_full_metadata() {
             MetadataMode::Full
         } else {
             MetadataMode::Basic
@@ -27,14 +29,14 @@ pub fn format_recursive(
         let entries = filter.apply(read_target(path, show_hidden, metadata_mode)?);
 
         if use_long_format {
-            format_long(entries, config);
+            format_long(entries, config, sort);
         } else {
-            format_one_per_line(entries, config);
+            format_one_per_line(entries, config, sort);
         }
         return Ok(());
     }
 
-    let metadata_mode = if use_long_format {
+    let metadata_mode = if use_long_format || sort.requires_full_metadata() {
         MetadataMode::Full
     } else {
         MetadataMode::Basic
@@ -52,13 +54,19 @@ pub fn format_recursive(
         ]
         .iter()
         .any(|icon| !icon.is_empty());
-    let renderer = TreeRenderer::new(&config.display.tree.style, uses_icons, filter);
-    let sort_entries = if use_long_format {
-        sort_by_type_then_name
+    let default_sort = if use_long_format {
+        DefaultSort::TypeThenName
     } else {
-        sort_by_name
+        DefaultSort::Name
     };
-    let tree_entries = renderer.collect(path, show_hidden, metadata_mode, sort_entries)?;
+    let renderer = TreeRenderer::new(
+        &config.display.tree.style,
+        uses_icons,
+        filter,
+        sort,
+        default_sort,
+    );
+    let tree_entries = renderer.collect(path, show_hidden, metadata_mode)?;
 
     if use_long_format {
         print_nested_long_tree(&root, &tree_entries, config);
@@ -140,19 +148,6 @@ fn print_short_tree(tree_entries: &[TreeEntry], config: &Config) {
             );
         }
     }
-}
-
-fn sort_by_name(entries: &mut [DiscoveredEntry]) {
-    entries.sort_by_cached_key(|entry| entry.entry.path.to_string_lossy().to_lowercase());
-}
-
-fn sort_by_type_then_name(entries: &mut [DiscoveredEntry]) {
-    entries.sort_by_cached_key(|entry| {
-        (
-            entry.entry.get_file_type(),
-            entry.entry.path.to_string_lossy().to_lowercase(),
-        )
-    });
 }
 
 fn display_entry(entry: &FileEntry) -> FileEntry {

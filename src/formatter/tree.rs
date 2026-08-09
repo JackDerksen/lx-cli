@@ -1,6 +1,7 @@
 use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
-use crate::reader::{DiscoveredEntry, MetadataMode, read_directory_entries};
+use crate::reader::{MetadataMode, read_directory_entries};
+use crate::sort::{DefaultSort, SortOptions, sort_discovered_entries};
 use std::io;
 use std::path::Path;
 
@@ -13,14 +14,24 @@ pub struct TreeRenderer<'a> {
     style: &'a str,
     indents_for_icons: bool,
     filter: &'a EntryFilter,
+    sort: SortOptions,
+    default_sort: DefaultSort,
 }
 
 impl<'a> TreeRenderer<'a> {
-    pub fn new(style: &'a str, indents_for_icons: bool, filter: &'a EntryFilter) -> Self {
+    pub fn new(
+        style: &'a str,
+        indents_for_icons: bool,
+        filter: &'a EntryFilter,
+        sort: SortOptions,
+        default_sort: DefaultSort,
+    ) -> Self {
         Self {
             style,
             indents_for_icons,
             filter,
+            sort,
+            default_sort,
         }
     }
 
@@ -29,17 +40,9 @@ impl<'a> TreeRenderer<'a> {
         path: &Path,
         show_hidden: bool,
         metadata_mode: MetadataMode,
-        sort_entries: fn(&mut [DiscoveredEntry]),
     ) -> io::Result<Vec<TreeEntry>> {
         let mut tree_entries = Vec::new();
-        self.collect_directory(
-            path,
-            show_hidden,
-            metadata_mode,
-            sort_entries,
-            "",
-            &mut tree_entries,
-        )?;
+        self.collect_directory(path, show_hidden, metadata_mode, "", &mut tree_entries)?;
         Ok(tree_entries)
     }
 
@@ -48,13 +51,12 @@ impl<'a> TreeRenderer<'a> {
         path: &Path,
         show_hidden: bool,
         metadata_mode: MetadataMode,
-        sort_entries: fn(&mut [DiscoveredEntry]),
         prefix: &str,
         tree_entries: &mut Vec<TreeEntry>,
     ) -> io::Result<()> {
         let mut entries = read_directory_entries(path, show_hidden, metadata_mode)?;
         entries.retain(|entry| self.filter.includes(&entry.entry));
-        sort_entries(&mut entries);
+        sort_discovered_entries(&mut entries, self.sort, self.default_sort);
 
         for (index, discovered_entry) in entries.iter().enumerate() {
             let is_last = index == entries.len() - 1;
@@ -70,7 +72,6 @@ impl<'a> TreeRenderer<'a> {
                     &discovered_entry.full_path,
                     show_hidden,
                     metadata_mode,
-                    sort_entries,
                     &child_prefix,
                     tree_entries,
                 )?;

@@ -1,3 +1,4 @@
+use crate::sort::{SortField, SortOptions, SortOrder};
 use colored::Color;
 use serde::Deserialize;
 use std::fs;
@@ -57,6 +58,10 @@ pub struct DisplayConfig {
     pub max_rows: usize,
     #[serde(default = "default_compact_max_rows")]
     pub compact_max_rows: usize,
+    #[serde(default)]
+    pub sort_field: Option<SortField>,
+    #[serde(default)]
+    pub sort_order: SortOrder,
     #[serde(default)]
     pub tree: TreeConfig,
     #[serde(default = "default_long_format_fields")]
@@ -120,6 +125,8 @@ impl Default for DisplayConfig {
             column_spacing: default_column_spacing(),
             max_rows: default_max_rows(),
             compact_max_rows: default_compact_max_rows(),
+            sort_field: None,
+            sort_order: SortOrder::Asc,
             tree: TreeConfig::default(),
             long_format_fields: default_long_format_fields(),
             long_format_titles: false,
@@ -258,6 +265,10 @@ impl IconConfig {
 impl DisplayConfig {
     pub fn get_long_format_title_color(&self) -> Color {
         parse_color(&self.long_format_title_color)
+    }
+
+    pub fn default_sort(&self) -> SortOptions {
+        SortOptions::new(self.sort_field, self.sort_order)
     }
 }
 

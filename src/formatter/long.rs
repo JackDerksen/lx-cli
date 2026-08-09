@@ -1,12 +1,11 @@
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
-use crate::sort::sort_default;
+use crate::sort::{SortOptions, sort_entries};
 use colored::Colorize;
 use unicode_width::UnicodeWidthStr;
 
-pub fn format_long(mut entries: Vec<FileEntry>, config: &Config) {
-    // Apply default sorting: by type, then alphabetically (case-insensitive)
-    sort_default(&mut entries);
+pub fn format_long(mut entries: Vec<FileEntry>, config: &Config, sort: SortOptions) {
+    sort_entries(&mut entries, sort);
 
     print_long_entries(&entries, config, "");
 }
@@ -237,11 +236,7 @@ fn print_long_titles(
             let title = column_title(field);
             let width = widths.get(field).copied().unwrap_or(0);
             let padded = if index < fields.len() - 1 {
-                if matches!(field.as_str(), "nlink" | "size") {
-                    format!("{:>width$}", title, width = width)
-                } else {
-                    pad_to_display_width(title.to_string(), width)
-                }
+                pad_to_display_width(title.to_string(), width)
             } else {
                 title.to_string()
             };
