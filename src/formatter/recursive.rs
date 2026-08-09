@@ -1,14 +1,11 @@
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
 use crate::formatter::long::{
-    calculate_column_widths, calculate_column_widths_with_filename_prefixes,
-    print_long_entries_with_filename_prefixes, print_long_entries_with_widths,
+    calculate_column_widths_with_filename_prefixes, print_long_entries_with_filename_prefixes,
 };
 use crate::formatter::tree::{TreeEntry, TreeRenderer};
 use crate::formatter::{format_long, format_one_per_line};
-use crate::reader::{
-    DiscoveredEntry, MetadataMode, read_directory_entries, read_entry, read_target,
-};
+use crate::reader::{DiscoveredEntry, MetadataMode, read_entry, read_target};
 use colored::Colorize;
 use std::io;
 use std::path::Path;
@@ -41,11 +38,6 @@ pub fn format_recursive(
         MetadataMode::Basic
     };
     let root = read_entry(path, metadata_mode)?;
-
-    if use_long_format && config.display.tree.recursive_long_format == "header" {
-        print_tree_root(&root, config);
-        return print_long_format_with_headers(path, config, show_hidden, true);
-    }
 
     let uses_icons = !use_long_format
         && [
@@ -143,43 +135,6 @@ fn print_short_tree(tree_entries: &[TreeEntry], config: &Config) {
             );
         }
     }
-}
-
-fn print_long_format_with_headers(
-    path: &Path,
-    config: &Config,
-    show_hidden: bool,
-    is_root: bool,
-) -> io::Result<()> {
-    let mut entries = read_directory_entries(path, show_hidden, MetadataMode::Full)?;
-    sort_by_type_then_name(&mut entries);
-
-    if !is_root {
-        println!("{}:", path.display());
-    }
-
-    let display_entries: Vec<FileEntry> = entries
-        .iter()
-        .map(|discovered_entry| display_entry(&discovered_entry.entry))
-        .collect();
-    if !display_entries.is_empty() {
-        let fields = &config.display.long_format_fields;
-        let widths = calculate_column_widths(&display_entries, fields, config);
-        print_long_entries_with_widths(&display_entries, config, "", fields, &widths);
-    }
-
-    for discovered_entry in entries {
-        if discovered_entry.entry.is_dir {
-            print_long_format_with_headers(
-                &discovered_entry.full_path,
-                config,
-                show_hidden,
-                false,
-            )?;
-        }
-    }
-
-    Ok(())
 }
 
 fn sort_by_name(entries: &mut [DiscoveredEntry]) {
