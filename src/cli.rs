@@ -29,6 +29,22 @@ pub struct Args {
     pub show_hidden: bool,
 
     #[arg(
+        short = 'f',
+        long = "files",
+        help = "Show only files",
+        conflicts_with = "recursive"
+    )]
+    pub files: bool,
+
+    #[arg(
+        short = 'd',
+        long = "directories",
+        help = "Show only directories",
+        conflicts_with = "recursive"
+    )]
+    pub directories: bool,
+
+    #[arg(
         short = '1',
         help = "Force single column output",
         conflicts_with = "recursive"
@@ -72,5 +88,8 @@ mod tests {
         assert!(Args::try_parse_from(["lx", "-l1"]).is_err());
         assert!(Args::try_parse_from(["lx", "-1r"]).is_err());
         assert!(Args::try_parse_from(["lx", "-cl"]).is_err());
+        let filters = Args::try_parse_from(["lx", "-fd"]).expect("parse -fd");
+        assert!(filters.files && filters.directories);
+        assert!(Args::try_parse_from(["lx", "-rf"]).is_err());
     }
 }

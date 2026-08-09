@@ -7,8 +7,6 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 - **Crazy fast**: just as fast (if not faster) compared to the stock `ls` command
 - **Colorized output** with file type icons
 - **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), compact (`-c`), and recursive tree view (`-r`)
-- **Hidden files support**: use `-a` to show all files
-- **Recursive tree view**: display directory hierarchies with `-r`
 - **Configurable**: customise colours, hidden-file styling, spacing, display options, and tree styles
 - **Smart alignment**: properly handles unicode characters and icons
 
@@ -116,6 +114,10 @@ lx -c
 # Show directory tree recursively
 lx -r
 
+# Show only directories or only files
+lx -d
+lx -f
+
 # Combine flags
 lx -la src
 lx -lr
@@ -129,6 +131,8 @@ lx /path/to/directory
 
 - `-l`, `--long`: Use a long listing format with detailed file information
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
+- `-f`, `--files`: Show only files (not available with `-r`)
+- `-d`, `--directories`: Show only directories (not available with `-r`)
 - `-1`: Force single-column output (useful for piping to other commands)
 - `-c`, `--compact`: Use compact columns, wrapping after `compact_max_rows` rows
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy

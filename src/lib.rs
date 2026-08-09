@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod config;
 pub mod file_entry;
+pub mod filter;
 pub mod formatter;
 pub mod icon;
 pub mod reader;

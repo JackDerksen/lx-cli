@@ -1,5 +1,6 @@
 use clap::Parser;
 use lx_cli::config::load_config;
+use lx_cli::filter::EntryFilter;
 use lx_cli::formatter::{
     format_long, format_one_per_line, format_recursive, format_short, format_short_compact,
 };
@@ -17,6 +18,7 @@ fn main() {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let config = load_config();
+    let filter = EntryFilter::new(args.files, args.directories);
 
     let target_path = Path::new(&args.target);
 
@@ -39,7 +41,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             MetadataMode::Basic
         };
-        let entries = read_target(target_path, args.show_hidden, metadata_mode)?;
+        let entries = filter.apply(read_target(target_path, args.show_hidden, metadata_mode)?);
 
         if args.long {
             format_long(entries, &config);
