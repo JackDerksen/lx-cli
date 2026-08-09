@@ -4,8 +4,9 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 
 ## Features
 
+- **Crazy fast**: just as fast (if not faster) compared to the stock `ls` command
 - **Colorized output** with file type icons
-- **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), and tree view (`-r`)
+- **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), compact (`-c`), and recursive tree view (`-r`)
 - **Hidden files support**: use `-a` to show all files
 - **Recursive tree view**: display directory hierarchies with `-r`
 - **Configurable**: customise colours, hidden-file styling, spacing, display options, and tree styles
@@ -14,24 +15,29 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 
 ## Demo
 
-<img width="3024" height="1894" alt="CleanShot 2025-12-31 at 21 58 16@2x" src="https://github.com/user-attachments/assets/44e6b315-4679-4e73-b875-8eb044d3de8d" />
-Basic formatting difference compared to the standard ls command
+<img width="3024" height="1900" alt="CleanShot 2026-08-08 at 18 32 07@2x" src="https://github.com/user-attachments/assets/ee340327-6152-4ddf-b25d-8681eb0744b6" />
+
+Basic formatting difference compared to the standard `ls` command
 
 ---
-<img width="3024" height="1896" alt="CleanShot 2025-12-31 at 21 52 38@2x" src="https://github.com/user-attachments/assets/fc7415c7-0427-46cf-9b45-95b4a78cf1b4" />
-Nicer long format compared to the standard ls command (displayed fields can be customized)
+<img width="3024" height="1900" alt="CleanShot 2026-08-08 at 18 33 05@2x" src="https://github.com/user-attachments/assets/17bf867c-faf7-483b-a7c7-906bd9d5a549" />
+
+Nicer long format compared to the standard `ls` command (displayed fields can be customized)
 
 ---
-<img width="3024" height="1896" alt="CleanShot 2025-12-31 at 21 53 02@2x" src="https://github.com/user-attachments/assets/6651dcb4-e571-4245-9009-cb9d50b5c542" />
-Recursive sub-directory tree view with the '-r' flag
+<img width="3024" height="1900" alt="CleanShot 2026-08-08 at 18 33 52@2x" src="https://github.com/user-attachments/assets/d53796f7-461a-4e97-b5e9-766a033584bb" />
+
+Recursive sub-directory tree view with the `-r` flag
 
 ---
-<img width="3024" height="1900" alt="CleanShot 2025-12-31 at 21 53 35@2x" src="https://github.com/user-attachments/assets/68a16075-0d8b-4124-aec2-253740fa26ec" />
-The '-r' flag can be combined with the '-l' long flag for viewing subdirectory info
+<img width="3024" height="1900" alt="CleanShot 2026-08-08 at 18 34 40@2x" src="https://github.com/user-attachments/assets/e608a0a5-03a8-49f9-9562-78fdf1926894" />
+
+The `-r` flag can be combined with the '-l' long flag for viewing subdirectory info
 
 ---
-<img width="3024" height="1898" alt="CleanShot 2025-12-31 at 21 54 04@2x" src="https://github.com/user-attachments/assets/e44422e9-6c69-4d34-9322-9449aab5c62f" />
-'-1' flag for one-per-line output formatting
+<img width="3024" height="1900" alt="CleanShot 2026-08-08 at 18 35 19@2x" src="https://github.com/user-attachments/assets/0530bcdf-6ba6-4f07-a673-e12a13243779" />
+
+`-1` flag to force single-column output formatting
 
 
 ## Requirements
@@ -48,6 +54,9 @@ cargo install lx-cli
 ```
 
 This will install the `lx` binary to `~/.cargo/bin/`, which is typically already in your `PATH`.
+
+<details>
+<summary>Building from source</summary>
 
 Alternatively, you can build it from source:
 
@@ -73,6 +82,8 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Add this to your shell configuration file (`.bashrc`, `.zshrc`, etc.) to make it permanent.
+
+</details>
 
 ## Quick Start
 
@@ -118,7 +129,7 @@ lx /path/to/directory
 
 - `-l`, `--long`: Use a long listing format with detailed file information
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
-- `-1`: Force single column output (useful for piping to other commands)
+- `-1`: Force single-column output (useful for piping to other commands)
 - `-c`, `--compact`: Use compact columns, wrapping after `compact_max_rows` rows
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy
 
