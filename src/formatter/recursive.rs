@@ -47,7 +47,15 @@ pub fn format_recursive(
         return print_long_format_with_headers(path, config, show_hidden, true);
     }
 
-    let renderer = TreeRenderer::new(&config.display.tree.style);
+    let uses_icons = !use_long_format
+        && [
+            config.icons.directory.as_str(),
+            config.icons.executable.as_str(),
+            config.icons.regular.as_str(),
+        ]
+        .iter()
+        .any(|icon| !icon.is_empty());
+    let renderer = TreeRenderer::new(&config.display.tree.style, uses_icons);
     let sort_entries = if use_long_format {
         sort_by_type_then_name
     } else {
@@ -77,7 +85,7 @@ fn print_nested_long_tree(root: &FileEntry, tree_entries: &[TreeEntry], config: 
     filename_prefixes.extend(
         tree_entries
             .iter()
-            .map(|tree_entry| tree_entry.branch.clone()),
+            .map(|tree_entry| format!("{} ", tree_entry.branch)),
     );
 
     let fields = &config.display.long_format_fields;
@@ -85,6 +93,7 @@ fn print_nested_long_tree(root: &FileEntry, tree_entries: &[TreeEntry], config: 
         &display_entries,
         &filename_prefixes,
         fields,
+        config,
     );
     print_long_entries_with_filename_prefixes(
         &display_entries,
@@ -124,10 +133,10 @@ fn print_short_tree(tree_entries: &[TreeEntry], config: &Config) {
         };
 
         if icon.is_empty() {
-            println!("{}{}", tree_entry.branch, filename_colored);
+            println!("{} {}", tree_entry.branch, filename_colored);
         } else {
             println!(
-                "{}{} {}",
+                "{} {} {}",
                 tree_entry.branch,
                 icon.color(entry.get_icon_color(&config.icons.colors)),
                 filename_colored
@@ -155,7 +164,7 @@ fn print_long_format_with_headers(
         .collect();
     if !display_entries.is_empty() {
         let fields = &config.display.long_format_fields;
-        let widths = calculate_column_widths(&display_entries, fields);
+        let widths = calculate_column_widths(&display_entries, fields, config);
         print_long_entries_with_widths(&display_entries, config, "", fields, &widths);
     }
 

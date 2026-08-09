@@ -90,6 +90,12 @@ long_format_fields = [
     "filename",
 ]
 
+# Show column titles above long-format output (default: false)
+long_format_titles = false
+
+# Colour used for long-format column titles
+long_format_title_color = "bright_black"
+
 [display.tree]
 # Tree display style for recursive output (-r flag)
 # Options: "ascii" (default) or "indent"

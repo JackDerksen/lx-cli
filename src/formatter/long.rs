@@ -17,13 +17,14 @@ pub fn print_long_entries(entries: &[FileEntry], config: &Config, prefix: &str) 
     }
 
     let fields = &config.display.long_format_fields;
-    let widths = calculate_column_widths(entries, fields);
+    let widths = calculate_column_widths(entries, fields, config);
     print_long_entries_with_widths(entries, config, prefix, fields, &widths);
 }
 
 pub fn calculate_column_widths(
     entries: &[FileEntry],
     fields: &[String],
+    config: &Config,
 ) -> std::collections::HashMap<String, usize> {
     let mut max_widths: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
@@ -41,6 +42,16 @@ pub fn calculate_column_widths(
                 .map(|e| e.format_size().len())
                 .max()
                 .unwrap_or(0),
+            "modified" => entries
+                .iter()
+                .map(|e| UnicodeWidthStr::width(e.format_modified().as_str()))
+                .max()
+                .unwrap_or(0),
+            "icon" => entries
+                .iter()
+                .map(|e| UnicodeWidthStr::width(e.get_icon_custom(&config.icons).as_str()))
+                .max()
+                .unwrap_or(0),
             "filename" => entries
                 .iter()
                 .map(|e| UnicodeWidthStr::width(e.path.to_string_lossy().as_ref()))
@@ -53,7 +64,12 @@ pub fn calculate_column_widths(
                 .unwrap_or(0),
             _ => 0,
         };
-        max_widths.insert(field.clone(), width);
+        let title_width = if config.display.long_format_titles {
+            UnicodeWidthStr::width(column_title(field))
+        } else {
+            0
+        };
+        max_widths.insert(field.clone(), width.max(title_width));
     }
 
     max_widths
@@ -63,6 +79,7 @@ pub fn calculate_column_widths_with_filename_prefixes(
     entries: &[FileEntry],
     filename_prefixes: &[String],
     fields: &[String],
+    config: &Config,
 ) -> std::collections::HashMap<String, usize> {
     let mut entries_with_prefixes = entries.to_vec();
 
@@ -70,7 +87,7 @@ pub fn calculate_column_widths_with_filename_prefixes(
         entry.path = format!("{filename_prefix}{}", entry.path.to_string_lossy()).into();
     }
 
-    calculate_column_widths(&entries_with_prefixes, fields)
+    calculate_column_widths(&entries_with_prefixes, fields, config)
 }
 
 pub fn print_long_entries_with_widths(
@@ -80,6 +97,9 @@ pub fn print_long_entries_with_widths(
     fields: &[String],
     widths: &std::collections::HashMap<String, usize>,
 ) {
+    if config.display.long_format_titles {
+        print_long_titles(config, prefix, fields, widths);
+    }
     print_long_entries_with_optional_filename_prefixes(
         entries, config, prefix, fields, widths, None,
     );
@@ -92,6 +112,9 @@ pub fn print_long_entries_with_filename_prefixes(
     fields: &[String],
     widths: &std::collections::HashMap<String, usize>,
 ) {
+    if config.display.long_format_titles {
+        print_long_titles(config, "", fields, widths);
+    }
     print_long_entries_with_optional_filename_prefixes(
         entries,
         config,
@@ -116,7 +139,15 @@ fn print_long_entries_with_optional_filename_prefixes(
 
         for (idx, field) in fields.iter().enumerate() {
             let part = match field.as_str() {
-                "permissions" => entry.format_permissions(),
+                "permissions" => {
+                    let width = widths.get("permissions").copied().unwrap_or(0);
+                    let permissions = entry.format_permissions();
+                    if idx < fields.len() - 1 {
+                        pad_to_display_width(permissions, width)
+                    } else {
+                        permissions
+                    }
+                }
                 "nlink" => {
                     let width = widths.get("nlink").copied().unwrap_or(0);
                     format!("{:>width$}", entry.nlink.to_string(), width = width)
@@ -133,15 +164,25 @@ fn print_long_entries_with_optional_filename_prefixes(
                     let width = widths.get("size").copied().unwrap_or(0);
                     format!("{:>width$}", entry.format_size(), width = width)
                 }
-                "modified" => entry.format_modified(),
+                "modified" => {
+                    let width = widths.get("modified").copied().unwrap_or(0);
+                    let modified = entry.format_modified();
+                    if idx < fields.len() - 1 {
+                        pad_to_display_width(modified, width)
+                    } else {
+                        modified
+                    }
+                }
                 "icon" => {
                     let icon = entry.get_icon_custom(&config.icons);
                     let icon_color = entry.get_icon_color(&config.icons.colors);
-                    if icon.is_empty() {
-                        String::new()
+                    let width = widths.get("icon").copied().unwrap_or(0);
+                    let padded = if idx < fields.len() - 1 {
+                        pad_to_display_width(icon, width)
                     } else {
-                        format!("{}", icon.color(icon_color))
-                    }
+                        icon
+                    };
+                    format!("{}", padded.color(icon_color))
                 }
                 "filename" => {
                     let filename_str = entry.path.to_string_lossy().to_string();
@@ -181,4 +222,55 @@ fn print_long_entries_with_optional_filename_prefixes(
             .collect();
         println!("{}{}", prefix, visible_parts.join("  "));
     }
+}
+
+fn print_long_titles(
+    config: &Config,
+    prefix: &str,
+    fields: &[String],
+    widths: &std::collections::HashMap<String, usize>,
+) {
+    let titles: Vec<String> = fields
+        .iter()
+        .enumerate()
+        .map(|(index, field)| {
+            let title = column_title(field);
+            let width = widths.get(field).copied().unwrap_or(0);
+            let padded = if index < fields.len() - 1 {
+                if matches!(field.as_str(), "nlink" | "size") {
+                    format!("{:>width$}", title, width = width)
+                } else {
+                    pad_to_display_width(title.to_string(), width)
+                }
+            } else {
+                title.to_string()
+            };
+
+            format!(
+                "{}",
+                padded.color(config.display.get_long_format_title_color())
+            )
+        })
+        .collect();
+
+    println!("{}{}", prefix, titles.join("  "));
+}
+
+fn column_title(field: &str) -> &str {
+    match field {
+        "permissions" => "Permissions",
+        "nlink" => "Links",
+        "owner" => "Owner",
+        "group" => "Group",
+        "size" => "Size",
+        "modified" => "Modified",
+        "icon" => "Icon",
+        "filename" => "Name",
+        _ => field,
+    }
+}
+
+fn pad_to_display_width(value: String, width: usize) -> String {
+    let padding = width.saturating_sub(UnicodeWidthStr::width(value.as_str()));
+    format!("{value}{}", " ".repeat(padding))
 }

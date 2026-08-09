@@ -61,6 +61,10 @@ pub struct DisplayConfig {
     pub tree: TreeConfig,
     #[serde(default = "default_long_format_fields")]
     pub long_format_fields: Vec<String>,
+    #[serde(default)]
+    pub long_format_titles: bool,
+    #[serde(default = "default_long_format_title_color")]
+    pub long_format_title_color: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -121,6 +125,8 @@ impl Default for DisplayConfig {
             compact_max_rows: default_compact_max_rows(),
             tree: TreeConfig::default(),
             long_format_fields: default_long_format_fields(),
+            long_format_titles: false,
+            long_format_title_color: default_long_format_title_color(),
         }
     }
 }
@@ -172,6 +178,10 @@ fn default_long_format_fields() -> Vec<String> {
         "icon".to_string(),
         "filename".to_string(),
     ]
+}
+
+fn default_long_format_title_color() -> String {
+    "bright_black".to_string()
 }
 
 fn default_directory_icon() -> String {
@@ -249,6 +259,12 @@ impl IconConfig {
 
     pub fn get_regular_icon(&self) -> String {
         self.regular.clone()
+    }
+}
+
+impl DisplayConfig {
+    pub fn get_long_format_title_color(&self) -> Color {
+        parse_color(&self.long_format_title_color)
     }
 }
 

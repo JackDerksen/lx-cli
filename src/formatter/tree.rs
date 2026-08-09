@@ -10,11 +10,15 @@ pub struct TreeEntry {
 
 pub struct TreeRenderer<'a> {
     style: &'a str,
+    indents_for_icons: bool,
 }
 
 impl<'a> TreeRenderer<'a> {
-    pub fn new(style: &'a str) -> Self {
-        Self { style }
+    pub fn new(style: &'a str, indents_for_icons: bool) -> Self {
+        Self {
+            style,
+            indents_for_icons,
+        }
     }
 
     pub fn collect(
@@ -73,14 +77,16 @@ impl<'a> TreeRenderer<'a> {
     }
 
     fn branch(&self, prefix: &str, is_last: bool) -> (&str, String) {
+        let content_indent = if self.indents_for_icons { "  " } else { " " };
+
         if self.style == "ascii" {
             if is_last {
-                ("╰─", format!("{prefix}  "))
+                ("╰─", format!("{prefix}  {content_indent}"))
             } else {
-                ("├─", format!("{prefix}│ "))
+                ("├─", format!("{prefix}│ {content_indent}"))
             }
         } else {
-            ("", format!("{prefix}  "))
+            ("", format!("{prefix}  {content_indent}"))
         }
     }
 }
