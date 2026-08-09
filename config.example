@@ -69,6 +69,12 @@ compact_max_rows = 5
 # sort_field = "modified"
 # sort_order = "desc" # asc (default) or desc
 
+# Date and time format used by the modified long-format field. Supports Chrono
+# strftime specifiers, such as %B for a full month name, %b for an abbreviation,
+# %-d for an unpadded day, and %I:%M %p for a 12-hour time.
+datetime_format = "%Y-%m-%d %H:%M:%S"
+# Example: datetime_format = "%B %-d, %Y at %-I:%M %p"
+
 # Long format field ordering and visibility (used with -l flag)
 # Specify which fields to display and in what order. Available fields:
 # - filename: The name of the file

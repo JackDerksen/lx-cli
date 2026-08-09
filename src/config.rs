@@ -62,6 +62,8 @@ pub struct DisplayConfig {
     pub sort_field: Option<SortField>,
     #[serde(default)]
     pub sort_order: SortOrder,
+    #[serde(default = "default_datetime_format")]
+    pub datetime_format: String,
     #[serde(default)]
     pub tree: TreeConfig,
     #[serde(default = "default_long_format_fields")]
@@ -127,6 +129,7 @@ impl Default for DisplayConfig {
             compact_max_rows: default_compact_max_rows(),
             sort_field: None,
             sort_order: SortOrder::Asc,
+            datetime_format: default_datetime_format(),
             tree: TreeConfig::default(),
             long_format_fields: default_long_format_fields(),
             long_format_titles: false,
@@ -161,6 +164,10 @@ fn default_max_rows() -> usize {
 
 fn default_compact_max_rows() -> usize {
     5
+}
+
+fn default_datetime_format() -> String {
+    "%Y-%m-%d %H:%M:%S".to_string()
 }
 
 fn default_tree_style() -> String {

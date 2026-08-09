@@ -1,6 +1,7 @@
 /// Core data structures (FileEntry and FileType) that represent files and its metadata.
 use crate::config::{ColorConfig, IconColorConfig, IconConfig};
 use crate::icon::FileIcon;
+use chrono::format::{Item, StrftimeItems};
 use colored::Color;
 use std::ffi::OsString;
 use std::time::SystemTime;
@@ -100,10 +101,36 @@ impl FileEntry {
         }
     }
 
-    pub fn format_modified(&self) -> String {
+    pub fn format_modified_parts(&self, datetime_format: &str) -> Vec<DateTimePart> {
         let datetime: chrono::DateTime<chrono::Local> = self.modified.into();
-        datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+
+        StrftimeItems::new(datetime_format)
+            .map(|item| {
+                let alignment = match item {
+                    Item::Numeric(_, _) => DateTimePartAlignment::Right,
+                    Item::Fixed(_) => DateTimePartAlignment::Left,
+                    _ => DateTimePartAlignment::None,
+                };
+                let value = datetime
+                    .format_with_items(std::iter::once(item))
+                    .to_string();
+
+                DateTimePart { value, alignment }
+            })
+            .collect()
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum DateTimePartAlignment {
+    Left,
+    Right,
+    None,
+}
+
+pub struct DateTimePart {
+    pub value: String,
+    pub alignment: DateTimePartAlignment,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

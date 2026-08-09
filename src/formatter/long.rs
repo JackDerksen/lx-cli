@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::file_entry::{FileEntry, FileType};
+use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry, FileType};
 use crate::sort::{SortOptions, sort_entries};
 use colored::Colorize;
 use unicode_width::UnicodeWidthStr;
@@ -26,6 +26,7 @@ pub fn calculate_column_widths(
     config: &Config,
 ) -> std::collections::HashMap<String, usize> {
     let mut max_widths: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let modified_values = format_modified_entries(entries, &config.display.datetime_format);
 
     for field in fields {
         let width = match field.as_str() {
@@ -41,9 +42,9 @@ pub fn calculate_column_widths(
                 .map(|e| e.format_size().len())
                 .max()
                 .unwrap_or(0),
-            "modified" => entries
+            "modified" => modified_values
                 .iter()
-                .map(|e| UnicodeWidthStr::width(e.format_modified().as_str()))
+                .map(|value| UnicodeWidthStr::width(value.as_str()))
                 .max()
                 .unwrap_or(0),
             "icon" => entries
@@ -132,6 +133,8 @@ fn print_long_entries_with_optional_filename_prefixes(
     widths: &std::collections::HashMap<String, usize>,
     filename_prefixes: Option<&[String]>,
 ) {
+    let modified_values = format_modified_entries(entries, &config.display.datetime_format);
+
     // Print each entry
     for (entry_index, entry) in entries.iter().enumerate() {
         let mut output_parts: Vec<String> = Vec::new();
@@ -165,11 +168,11 @@ fn print_long_entries_with_optional_filename_prefixes(
                 }
                 "modified" => {
                     let width = widths.get("modified").copied().unwrap_or(0);
-                    let modified = entry.format_modified();
+                    let modified = &modified_values[entry_index];
                     if idx < fields.len() - 1 {
-                        pad_to_display_width(modified, width)
+                        pad_to_display_width(modified.to_string(), width)
                     } else {
-                        modified
+                        modified.to_string()
                     }
                 }
                 "icon" => {
@@ -220,6 +223,48 @@ fn print_long_entries_with_optional_filename_prefixes(
             .filter(|part| !part.is_empty())
             .collect();
         println!("{}{}", prefix, visible_parts.join("  "));
+    }
+}
+
+fn format_modified_entries(entries: &[FileEntry], datetime_format: &str) -> Vec<String> {
+    let parts: Vec<Vec<DateTimePart>> = entries
+        .iter()
+        .map(|entry| entry.format_modified_parts(datetime_format))
+        .collect();
+    let mut widths = vec![0; parts.iter().map(Vec::len).max().unwrap_or(0)];
+
+    for entry_parts in &parts {
+        for (index, part) in entry_parts.iter().enumerate() {
+            if part.alignment == DateTimePartAlignment::None {
+                continue;
+            }
+
+            let width = UnicodeWidthStr::width(part.value.as_str());
+            widths[index] = widths[index].max(width);
+        }
+    }
+
+    parts
+        .into_iter()
+        .map(|entry_parts| {
+            entry_parts
+                .iter()
+                .enumerate()
+                .map(|(index, part)| format_datetime_part(part, widths[index]))
+                .collect()
+        })
+        .collect()
+}
+
+fn format_datetime_part(part: &DateTimePart, width: usize) -> String {
+    match part.alignment {
+        DateTimePartAlignment::Left => pad_to_display_width(part.value.clone(), width),
+        DateTimePartAlignment::Right => format!(
+            "{}{}",
+            " ".repeat(width.saturating_sub(UnicodeWidthStr::width(part.value.as_str()))),
+            part.value
+        ),
+        DateTimePartAlignment::None => part.value.clone(),
     }
 }
 

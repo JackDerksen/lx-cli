@@ -164,4 +164,6 @@ The configuration file supports the following sections:
 - **`[display]`**: Control layout options, column wrapping, and default sorting
 - **`[display.tree]`**: Control tree display style for recursive listings (`style = "ascii"` or `style = "indent"`)
 
+Set `datetime_format` under `[display]` to change the long-format `modified` column. It uses Chrono’s strftime-style specifiers, so `%B %-d, %Y` renders a full month name (for example, `August 8, 2026`) and `%-I:%M %p` uses a 12-hour clock. Numeric and text directives are padded independently across the listing, keeping each date/time component aligned.
+
 For a complete list of available colors, icons, and configuration options, please refer to [`config.example`](config.example).
