@@ -45,6 +45,15 @@ pub struct Args {
     pub directories: bool,
 
     #[arg(
+        short = 'x',
+        long,
+        value_name = "PATTERN",
+        value_delimiter = ',',
+        help = "Exclude comma-separated glob patterns (repeatable)"
+    )]
+    pub exclude: Vec<String>,
+
+    #[arg(
         short = '1',
         help = "Force single column output",
         conflicts_with = "recursive"
@@ -91,5 +100,8 @@ mod tests {
         let filters = Args::try_parse_from(["lx", "-fd"]).expect("parse -fd");
         assert!(filters.files && filters.directories);
         assert!(Args::try_parse_from(["lx", "-rf"]).is_err());
+        let excluded = Args::try_parse_from(["lx", "-x", ".git,target,*.toml"])
+            .expect("parse multiple exclusion patterns");
+        assert_eq!(excluded.exclude, [".git", "target", "*.toml"]);
     }
 }

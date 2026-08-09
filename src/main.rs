@@ -18,7 +18,7 @@ fn main() {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let config = load_config();
-    let filter = EntryFilter::new(args.files, args.directories);
+    let filter = EntryFilter::new(args.files, args.directories, args.exclude);
 
     let target_path = Path::new(&args.target);
 
@@ -34,7 +34,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.recursive {
-        format_recursive(target_path, &config, args.show_hidden, args.long)?;
+        format_recursive(target_path, &config, args.show_hidden, args.long, &filter)?;
     } else {
         let metadata_mode = if args.long {
             MetadataMode::Full

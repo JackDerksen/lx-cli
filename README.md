@@ -118,6 +118,9 @@ lx -r
 lx -d
 lx -f
 
+# Exclude names or glob patterns from a listing
+lx -x '.git,target,Cargo.*'
+
 # Combine flags
 lx -la src
 lx -lr
@@ -133,6 +136,7 @@ lx /path/to/directory
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
 - `-f`, `--files`: Show only files (not available with `-r`)
 - `-d`, `--directories`: Show only directories (not available with `-r`)
+- `-x`, `--exclude <PATTERN>`: Exclude comma-separated names or `*`/`?` glob patterns; repeat the flag to add more patterns
 - `-1`: Force single-column output (useful for piping to other commands)
 - `-c`, `--compact`: Use compact columns, wrapping after `compact_max_rows` rows
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy

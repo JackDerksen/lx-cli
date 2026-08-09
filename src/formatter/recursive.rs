@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
+use crate::filter::EntryFilter;
 use crate::formatter::long::{
     calculate_column_widths_with_filename_prefixes, print_long_entries_with_filename_prefixes,
 };
@@ -15,6 +16,7 @@ pub fn format_recursive(
     config: &Config,
     show_hidden: bool,
     use_long_format: bool,
+    filter: &EntryFilter,
 ) -> io::Result<()> {
     if !path.is_dir() {
         let metadata_mode = if use_long_format {
@@ -22,7 +24,7 @@ pub fn format_recursive(
         } else {
             MetadataMode::Basic
         };
-        let entries = read_target(path, show_hidden, metadata_mode)?;
+        let entries = filter.apply(read_target(path, show_hidden, metadata_mode)?);
 
         if use_long_format {
             format_long(entries, config);
@@ -38,6 +40,9 @@ pub fn format_recursive(
         MetadataMode::Basic
     };
     let root = read_entry(path, metadata_mode)?;
+    if !filter.includes(&root) {
+        return Ok(());
+    }
 
     let uses_icons = !use_long_format
         && [
@@ -47,7 +52,7 @@ pub fn format_recursive(
         ]
         .iter()
         .any(|icon| !icon.is_empty());
-    let renderer = TreeRenderer::new(&config.display.tree.style, uses_icons);
+    let renderer = TreeRenderer::new(&config.display.tree.style, uses_icons, filter);
     let sort_entries = if use_long_format {
         sort_by_type_then_name
     } else {

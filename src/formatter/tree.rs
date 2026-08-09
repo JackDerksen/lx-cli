@@ -1,4 +1,5 @@
 use crate::file_entry::FileEntry;
+use crate::filter::EntryFilter;
 use crate::reader::{DiscoveredEntry, MetadataMode, read_directory_entries};
 use std::io;
 use std::path::Path;
@@ -11,13 +12,15 @@ pub struct TreeEntry {
 pub struct TreeRenderer<'a> {
     style: &'a str,
     indents_for_icons: bool,
+    filter: &'a EntryFilter,
 }
 
 impl<'a> TreeRenderer<'a> {
-    pub fn new(style: &'a str, indents_for_icons: bool) -> Self {
+    pub fn new(style: &'a str, indents_for_icons: bool, filter: &'a EntryFilter) -> Self {
         Self {
             style,
             indents_for_icons,
+            filter,
         }
     }
 
@@ -50,6 +53,7 @@ impl<'a> TreeRenderer<'a> {
         tree_entries: &mut Vec<TreeEntry>,
     ) -> io::Result<()> {
         let mut entries = read_directory_entries(path, show_hidden, metadata_mode)?;
+        entries.retain(|entry| self.filter.includes(&entry.entry));
         sort_entries(&mut entries);
 
         for (index, discovered_entry) in entries.iter().enumerate() {
