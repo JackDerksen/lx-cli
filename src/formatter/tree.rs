@@ -1,5 +1,6 @@
 use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
+use crate::git::GitRepository;
 use crate::reader::{MetadataMode, read_directory_entries};
 use crate::sort::{DefaultSort, SortOptions, sort_discovered_entries};
 use std::io;
@@ -16,6 +17,7 @@ pub struct TreeRenderer<'a> {
     filter: &'a EntryFilter,
     sort: SortOptions,
     default_sort: DefaultSort,
+    git: Option<&'a GitRepository>,
 }
 
 impl<'a> TreeRenderer<'a> {
@@ -25,6 +27,7 @@ impl<'a> TreeRenderer<'a> {
         filter: &'a EntryFilter,
         sort: SortOptions,
         default_sort: DefaultSort,
+        git: Option<&'a GitRepository>,
     ) -> Self {
         Self {
             style,
@@ -32,6 +35,7 @@ impl<'a> TreeRenderer<'a> {
             filter,
             sort,
             default_sort,
+            git,
         }
     }
 
@@ -42,6 +46,8 @@ impl<'a> TreeRenderer<'a> {
         metadata_mode: MetadataMode,
     ) -> io::Result<Vec<TreeEntry>> {
         let mut tree_entries = Vec::new();
+        let canonical_path = self.git.map(|_| path.canonicalize()).transpose()?;
+        let path = canonical_path.as_deref().unwrap_or(path);
         self.collect_directory(path, show_hidden, metadata_mode, "", &mut tree_entries)?;
         Ok(tree_entries)
     }
@@ -56,6 +62,11 @@ impl<'a> TreeRenderer<'a> {
     ) -> io::Result<()> {
         let mut entries = read_directory_entries(path, show_hidden, metadata_mode)?;
         entries.retain(|entry| self.filter.includes(&entry.entry));
+        if let Some(repository) = self.git {
+            for discovered in &mut entries {
+                discovered.entry.git_status = Some(repository.status(&discovered.full_path));
+            }
+        }
         sort_discovered_entries(&mut entries, self.sort, self.default_sort);
 
         for (index, discovered_entry) in entries.iter().enumerate() {

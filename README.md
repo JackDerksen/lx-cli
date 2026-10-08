@@ -9,6 +9,7 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 - **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), compact (`-c`), and recursive tree view (`-r`)
 - **Configurable**: customise colours, hidden-file styling, spacing, display options, and tree styles
 - **Smart alignment**: properly handles unicode characters and icons
+- **Git status**: optional single-character status badges, including summaries of changes beneath directories
 
 
 ## Demo
@@ -114,6 +115,10 @@ lx -c
 # Show directory tree recursively
 lx -r
 
+# Show Git status beside entries (also works with -l, -1, -c, and -r)
+lx --git
+lx -lr --git src
+
 # Show only directories or only files
 lx -d
 lx -f
@@ -136,6 +141,7 @@ lx /path/to/directory
 ## Flags
 
 - `-l`, `--long`: Use a long listing format with detailed file information
+- `--git`: Show Git status for entries and summarise changes beneath directories
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
 - `-f`, `--files`: Show only files (not available with `-r`)
 - `-d`, `--directories`: Show only directories (not available with `-r`)
@@ -148,6 +154,33 @@ lx /path/to/directory
 
 `-l` and `-1` are treated as separate display modes, so they cannot be combined together. `-c` is only available for short output, so it cannot be combined with `-l`, `-1`, or `-r`. Short flags can still be clustered in the usual Unix style, so combinations like `-la`, `-lr`, and `-alr` work as expected.
 
+With `--git`, short listings show a single-character status badge before each entry and long listings gain a `Git` column:
+
+| Badge | Meaning | Default colour |
+| --- | --- | --- |
+| `-` | No changes reported by Git (including ignored entries) | Bright black |
+| `M` | Unstaged changes, including deletions | Yellow |
+| `S` | Changes ready to commit, including additions and renames | Green |
+| `?` | Not yet tracked by Git | Cyan |
+| `!` | An unresolved merge conflict | Red |
+| `*` | Both staged and unstaged changes, or a directory containing different states | Yellow |
+
+Customise badge colours under `[colors.git]` in `~/.config/lx/config`. Each setting is optional; omitted settings keep their defaults. The available colour names are the same as for `[colors]`:
+
+```toml
+[colors.git]
+clean = "bright_black"
+modified = "yellow"
+staged = "green"
+untracked = "cyan"
+conflict = "red"
+mixed = "yellow"
+```
+
+Directories summarise changes anywhere beneath them, including deleted files. Any descendant conflict makes the directory show `!`. These summaries include hidden and excluded descendants, so they describe repository state independently of listing filters.
+
+Git status is opt-in and uses one Git status query for the repository containing the target, including linked worktrees. It requires the `git` executable. Outside a repository, `--git` leaves the listing unchanged; if Git fails, lx reports a warning and prints the normal listing. Submodules receive the containing repository's summary rather than a separate status scan of their contents. Untracked files are enumerated to distinguish them from ignored files, which can add latency in large repositories.
+
 ## Configuration
 
 `lx` can be customized using a configuration file at `~/.config/lx/config`.
@@ -159,6 +192,7 @@ See [`config.example`](config.example) for all available options and detailed co
 The configuration file supports the following sections:
 
 - **`[colors]`**: Customise text colours for different file types, including hidden files
+- **`[colors.git]`**: Customise Git badge colours for each status
 - **`[icons]`**: Set custom icons for different file types
 - **`[icons.colors]`**: Customise colours for icons separately from filenames, including hidden file icons
 - **`[display]`**: Control layout options, column wrapping, and default sorting

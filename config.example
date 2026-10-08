@@ -19,6 +19,15 @@ regular = "white"
 # Color for hidden files and directories
 hidden = "bright_black"
 
+[colors.git]
+# Git badge colours (--git), using the colour names listed above
+clean = "bright_black" # -
+modified = "yellow"    # M
+staged = "green"       # S
+untracked = "cyan"     # ?
+conflict = "red"       # !
+mixed = "yellow"       # *
+
 [icons]
 # Custom icons for different file types
 # By default, lx uses nerd font icons. If you don't have a nerd font installed,
@@ -80,6 +89,7 @@ datetime_format = "%Y-%m-%d %H:%M:%S"
 # - filename: The name of the file
 # - icon: The file icon
 # - permissions: File permissions (e.g., drwxr-xr-x)
+# - git: Git status (populated with --git; automatically added when omitted)
 # - nlink: Number of hard links
 # - owner: File owner name
 # - group: File group name

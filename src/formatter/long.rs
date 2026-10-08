@@ -30,6 +30,7 @@ pub fn calculate_column_widths(
 
     for field in fields {
         let width = match field.as_str() {
+            "git" => usize::from(entries.iter().any(|entry| entry.git_status.is_some())),
             "nlink" => entries
                 .iter()
                 .map(|e| e.nlink.to_string().len())
@@ -141,6 +142,12 @@ fn print_long_entries_with_optional_filename_prefixes(
 
         for (idx, field) in fields.iter().enumerate() {
             let part = match field.as_str() {
+                "git" => entry
+                    .git_status
+                    .map(|status| {
+                        status.format(widths.get("git").copied().unwrap_or(0), &config.colors.git)
+                    })
+                    .unwrap_or_default(),
                 "permissions" => {
                     let width = widths.get("permissions").copied().unwrap_or(0);
                     let permissions = entry.format_permissions();
@@ -298,6 +305,7 @@ fn print_long_titles(
 
 fn column_title(field: &str) -> &str {
     match field {
+        "git" => "Git",
         "permissions" => "Permissions",
         "nlink" => "Links",
         "owner" => "Owner",

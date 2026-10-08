@@ -1,14 +1,14 @@
 use crate::config::Config;
-use crate::file_entry::{FileEntry, FileType};
+use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
 use crate::formatter::long::{
     calculate_column_widths_with_filename_prefixes, print_long_entries_with_filename_prefixes,
 };
 use crate::formatter::tree::{TreeEntry, TreeRenderer};
-use crate::formatter::{format_long, format_one_per_line};
+use crate::formatter::{format_long, format_one_per_line, format_short_entry};
+use crate::git::GitRepository;
 use crate::reader::{MetadataMode, read_entry, read_target};
 use crate::sort::{DefaultSort, SortOptions};
-use colored::Colorize;
 use std::io;
 use std::path::Path;
 
@@ -19,6 +19,7 @@ pub fn format_recursive(
     use_long_format: bool,
     filter: &EntryFilter,
     sort: SortOptions,
+    git: Option<&GitRepository>,
 ) -> io::Result<()> {
     if !path.is_dir() {
         let metadata_mode = if use_long_format || sort.requires_full_metadata() {
@@ -26,7 +27,10 @@ pub fn format_recursive(
         } else {
             MetadataMode::Basic
         };
-        let entries = filter.apply(read_target(path, show_hidden, metadata_mode)?);
+        let mut entries = filter.apply(read_target(path, show_hidden, metadata_mode)?);
+        if let Some(repository) = git {
+            repository.annotate(path, &mut entries)?;
+        }
 
         if use_long_format {
             format_long(entries, config, sort);
@@ -41,7 +45,10 @@ pub fn format_recursive(
     } else {
         MetadataMode::Basic
     };
-    let root = read_entry(path, metadata_mode)?;
+    let mut root = read_entry(path, metadata_mode)?;
+    if let Some(repository) = git {
+        root.git_status = Some(repository.status(&path.canonicalize()?));
+    }
     if !filter.includes(&root) {
         return Ok(());
     }
@@ -65,6 +72,7 @@ pub fn format_recursive(
         filter,
         sort,
         default_sort,
+        git,
     );
     let tree_entries = renderer.collect(path, show_hidden, metadata_mode)?;
 
@@ -110,43 +118,16 @@ fn print_nested_long_tree(root: &FileEntry, tree_entries: &[TreeEntry], config: 
 }
 
 fn print_tree_root(root: &FileEntry, config: &Config) {
-    let root = display_entry(root);
-    let filename = root.path.to_string_lossy();
-    let icon = root.get_icon_custom(&config.icons);
-    let filename_colored = filename.color(root.get_color(&config.colors)).bold();
-
-    if icon.is_empty() {
-        println!("{filename_colored}");
-    } else {
-        println!(
-            "{} {filename_colored}",
-            icon.color(root.get_icon_color(&config.icons.colors))
-        );
-    }
+    println!("{}", format_short_entry(&display_entry(root), config));
 }
 
 fn print_short_tree(tree_entries: &[TreeEntry], config: &Config) {
     for tree_entry in tree_entries {
-        let entry = &tree_entry.entry;
-        let filename = display_entry(entry).path.to_string_lossy().to_string();
-        let icon = entry.get_icon_custom(&config.icons);
-        let filename_colored = match entry.get_file_type() {
-            FileType::Directory | FileType::Executable => {
-                filename.color(entry.get_color(&config.colors)).bold()
-            }
-            FileType::RegularFile => filename.color(entry.get_color(&config.colors)),
-        };
-
-        if icon.is_empty() {
-            println!("{} {}", tree_entry.branch, filename_colored);
-        } else {
-            println!(
-                "{} {} {}",
-                tree_entry.branch,
-                icon.color(entry.get_icon_color(&config.icons.colors)),
-                filename_colored
-            );
-        }
+        println!(
+            "{} {}",
+            tree_entry.branch,
+            format_short_entry(&display_entry(&tree_entry.entry), config)
+        );
     }
 }
 

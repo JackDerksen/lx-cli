@@ -3,6 +3,7 @@ use lx_cli::filter::EntryFilter;
 use lx_cli::formatter::{
     format_long, format_one_per_line, format_recursive, format_short, format_short_compact,
 };
+use lx_cli::git::GitRepository;
 use lx_cli::{Args, MetadataMode, read_target};
 use std::io;
 use std::path::Path;
@@ -16,7 +17,7 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse_args();
-    let config = load_config();
+    let mut config = load_config();
     let sort = args.sort_options(config.display.default_sort());
     let filter = EntryFilter::new(args.files, args.directories, args.exclude);
 
@@ -33,6 +34,36 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         .into());
     }
 
+    let git = if args.git {
+        match GitRepository::load(target_path) {
+            Ok(repository) => repository,
+            Err(error) => {
+                eprintln!("lx: cannot read Git status: {error}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    if git.is_some() {
+        if !config
+            .display
+            .long_format_fields
+            .iter()
+            .any(|field| field == "git")
+        {
+            config
+                .display
+                .long_format_fields
+                .insert(0, "git".to_string());
+        }
+    } else {
+        config
+            .display
+            .long_format_fields
+            .retain(|field| field != "git");
+    }
+
     if args.recursive {
         format_recursive(
             target_path,
@@ -41,6 +72,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             args.long,
             &filter,
             sort,
+            git.as_ref(),
         )?;
     } else {
         let metadata_mode = if args.long || sort.requires_full_metadata() {
@@ -48,7 +80,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             MetadataMode::Basic
         };
-        let entries = filter.apply(read_target(target_path, args.show_hidden, metadata_mode)?);
+        let mut entries = filter.apply(read_target(target_path, args.show_hidden, metadata_mode)?);
+        if let Some(repository) = &git {
+            repository.annotate(target_path, &mut entries)?;
+        }
 
         if args.long {
             format_long(entries, &config, sort);

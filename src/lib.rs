@@ -3,6 +3,7 @@ pub mod config;
 pub mod file_entry;
 pub mod filter;
 pub mod formatter;
+pub mod git;
 pub mod icon;
 pub mod reader;
 pub mod sort;

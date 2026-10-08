@@ -23,6 +23,9 @@ pub struct Args {
     #[arg(short, long, help = "Use a long listing format")]
     pub long: bool,
 
+    #[arg(long, help = "Show Git status, including changes beneath directories")]
+    pub git: bool,
+
     #[arg(
         short = 'a',
         long = "all",

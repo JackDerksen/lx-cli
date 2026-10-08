@@ -120,6 +120,7 @@ fn build_file_entry(
         owner,
         group,
         nlink: metadata.nlink(),
+        git_status: None,
     }
 }
 

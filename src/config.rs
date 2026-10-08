@@ -24,6 +24,32 @@ pub struct ColorConfig {
     pub regular: String,
     #[serde(default = "default_hidden_color")]
     pub hidden: String,
+    #[serde(default)]
+    pub git: GitColorConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+pub struct GitColorConfig {
+    pub clean: String,
+    pub modified: String,
+    pub staged: String,
+    pub untracked: String,
+    pub conflict: String,
+    pub mixed: String,
+}
+
+impl Default for GitColorConfig {
+    fn default() -> Self {
+        Self {
+            clean: "bright_black".to_string(),
+            modified: "yellow".to_string(),
+            staged: "green".to_string(),
+            untracked: "cyan".to_string(),
+            conflict: "red".to_string(),
+            mixed: "yellow".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -117,6 +143,7 @@ impl Default for ColorConfig {
             executable: default_executable_color(),
             regular: default_regular_color(),
             hidden: default_hidden_color(),
+            git: GitColorConfig::default(),
         }
     }
 }
@@ -279,7 +306,7 @@ impl DisplayConfig {
     }
 }
 
-fn parse_color(color_str: &str) -> Color {
+pub(crate) fn parse_color(color_str: &str) -> Color {
     match color_str.to_lowercase().as_str() {
         "black" => Color::Black,
         "red" => Color::Red,

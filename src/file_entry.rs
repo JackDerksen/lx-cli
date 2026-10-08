@@ -18,6 +18,7 @@ pub struct FileEntry {
     pub owner: String,
     pub group: String,
     pub nlink: u64,
+    pub git_status: Option<crate::git::GitStatus>,
 }
 
 impl FileEntry {
