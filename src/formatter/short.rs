@@ -1,14 +1,19 @@
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
-use crate::formatter::{entry_width, format_short_entry};
+use crate::formatter::{entry_width, format_short_entry, print_line};
 use crate::sort::{SortOptions, sort_entries};
+use std::io;
 
-pub fn format_short(entries: Vec<FileEntry>, config: &Config, sort: SortOptions) {
-    format_short_with_max_rows(entries, config, config.display.max_rows, sort);
+pub fn format_short(entries: Vec<FileEntry>, config: &Config, sort: SortOptions) -> io::Result<()> {
+    format_short_with_max_rows(entries, config, config.display.max_rows, sort)
 }
 
-pub fn format_short_compact(entries: Vec<FileEntry>, config: &Config, sort: SortOptions) {
-    format_short_with_max_rows(entries, config, config.display.compact_max_rows, sort);
+pub fn format_short_compact(
+    entries: Vec<FileEntry>,
+    config: &Config,
+    sort: SortOptions,
+) -> io::Result<()> {
+    format_short_with_max_rows(entries, config, config.display.compact_max_rows, sort)
 }
 
 fn format_short_with_max_rows(
@@ -16,7 +21,7 @@ fn format_short_with_max_rows(
     config: &Config,
     max_rows: usize,
     sort: SortOptions,
-) {
+) -> io::Result<()> {
     sort_entries(&mut entries, sort);
 
     if sort.is_custom() {
@@ -25,8 +30,12 @@ fn format_short_with_max_rows(
         } else {
             max_rows
         };
-        format_sorted_entries_with_max_rows(entries, rows, config.display.column_spacing, config);
-        return;
+        return format_sorted_entries_with_max_rows(
+            entries,
+            rows,
+            config.display.column_spacing,
+            config,
+        );
     }
 
     let mut directories: Vec<FileEntry> = Vec::new();
@@ -41,27 +50,25 @@ fn format_short_with_max_rows(
         }
     }
 
-    let column_spacing = config.display.column_spacing;
-    // If max_rows is set (not 0), format each file type with wrapping
-    // Otherwise, use the original single-column-per-type format
-    if max_rows > 0 {
-        format_with_max_rows(
-            directories,
-            executables,
-            regular_files,
-            max_rows,
-            column_spacing,
-            config,
-        );
+    let rows = if max_rows == 0 {
+        directories
+            .len()
+            .max(executables.len())
+            .max(regular_files.len())
     } else {
-        format_single_column_per_type(
-            directories,
-            executables,
-            regular_files,
-            column_spacing,
-            config,
-        );
+        max_rows
+    };
+    if rows == 0 {
+        return Ok(());
     }
+    format_with_max_rows(
+        directories,
+        executables,
+        regular_files,
+        rows,
+        config.display.column_spacing,
+        config,
+    )
 }
 
 fn format_sorted_entries_with_max_rows(
@@ -69,7 +76,7 @@ fn format_sorted_entries_with_max_rows(
     max_rows: usize,
     column_spacing: usize,
     config: &Config,
-) {
+) -> io::Result<()> {
     let widths = compact_column_widths(&entries, max_rows, config);
 
     for row in 0..max_rows {
@@ -92,9 +99,10 @@ fn format_sorted_entries_with_max_rows(
         }
 
         if has_content {
-            println!("{}", line.trim_end());
+            print_line(format_args!("{}", line.trim_end()))?;
         }
     }
+    Ok(())
 }
 
 fn format_with_max_rows(
@@ -104,7 +112,7 @@ fn format_with_max_rows(
     max_rows: usize,
     column_spacing: usize,
     config: &Config,
-) {
+) -> io::Result<()> {
     let directory_widths = compact_column_widths(&directories, max_rows, config);
     let executable_widths = compact_column_widths(&executables, max_rows, config);
     let file_widths = compact_column_widths(&regular_files, max_rows, config);
@@ -141,9 +149,10 @@ fn format_with_max_rows(
         }
 
         if has_any_content {
-            println!("{}", line.trim_end());
+            print_line(format_args!("{}", line.trim_end()))?;
         }
     }
+    Ok(())
 }
 
 fn compact_column_widths(entries: &[FileEntry], max_rows: usize, config: &Config) -> Vec<usize> {
@@ -188,27 +197,4 @@ fn append_compact_section(
     }
 
     has_content
-}
-
-fn format_single_column_per_type(
-    directories: Vec<FileEntry>,
-    executables: Vec<FileEntry>,
-    regular_files: Vec<FileEntry>,
-    column_spacing: usize,
-    config: &Config,
-) {
-    let max_rows = directories
-        .len()
-        .max(executables.len())
-        .max(regular_files.len());
-    if max_rows > 0 {
-        format_with_max_rows(
-            directories,
-            executables,
-            regular_files,
-            max_rows,
-            column_spacing,
-            config,
-        );
-    }
 }

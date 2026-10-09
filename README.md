@@ -109,6 +109,15 @@ lx -a
 # Display one file per line
 lx -1
 
+# Piped output defaults to plain filenames, one per line
+lx | head
+
+# Force plain output, including in a terminal
+lx --plain
+
+# Use NUL separators to preserve filenames containing newlines
+lx --zero | xargs -0 -I {} printf '%s\n' '{}'
+
 # Use compact columns, wrapping after five rows by default
 lx -c
 
@@ -149,10 +158,16 @@ lx /path/to/directory
 - `-s`, `--sort <FIELD> [ORDER]`: Sort by `name`, `size`, `modified`, `type`, `permissions`, `links`, `owner`, or `group`; use optional `asc` (the default) or `desc`
 - `--sort-order <ORDER>`: Explicit alternative for specifying `asc` or `desc`; requires `--sort`
 - `-1`: Force single-column output (useful for piping to other commands)
+- `--plain`: Print undecorated filenames, one per line
+- `-0`, `--zero`: Print undecorated filenames separated by NUL bytes
 - `-c`, `--compact`: Use compact columns, wrapping after `compact_max_rows` rows
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy
 
 `-l` and `-1` are treated as separate display modes, so they cannot be combined together. `-c` is only available for short output, so it cannot be combined with `-l`, `-1`, or `-r`. Short flags can still be clustered in the usual Unix style, so combinations like `-la`, `-lr`, and `-alr` work as expected.
+
+When stdout is a pipe or redirected to a file, the default listing and `-1` print raw filenames, one per line, without icons, colours, Git badges, titles, or padding. Explicit `-l`, `-c`, `-r`, or `--git` retain their requested display mode. Use `--plain` to guarantee plain output in any destination, or `--zero` for an unambiguous filename stream, including filenames containing newlines or non-UTF-8 bytes. Both modes honour sorting, hidden-file settings, and filters, and disable styling even when colour is forced through the environment.
+
+`--plain` and `--zero` cannot be combined with each other or with `-l`, `-c`, `-r`, or `--git`. Directory listings emit entry names relative to the listed directory; a single-file listing retains the supplied path. To pass files from another directory to a command, run the pipeline inside that directory, for example `(cd src && lx --zero | xargs -0 -I {} printf '%s\n' '{}')`. Empty listings emit no separators. A consumer that closes early, such as `head`, causes lx to exit quietly and successfully.
 
 With `--git`, short listings show a single-character status badge before each entry and long listings gain a `Git` column:
 

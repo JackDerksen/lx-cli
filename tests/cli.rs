@@ -1,7 +1,10 @@
 use std::fs;
+use std::os::fd::OwnedFd;
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn create_temp_dir(label: &str) -> PathBuf {
@@ -251,5 +254,137 @@ fn git_status_works_across_display_modes_and_worktrees() {
     assert!(with_git.status.success());
     assert!(with_git.stderr.is_empty());
     assert_eq!(plain.stdout, with_git.stdout);
+    fs::remove_dir_all(temp_dir).expect("remove test directory");
+}
+
+#[test]
+fn plain_and_zero_output_preserve_filename_bytes_and_listing_options() {
+    let temp_dir = create_temp_dir("plain-output");
+    let directory = temp_dir.join("entries");
+    fs::create_dir_all(directory.join("child")).expect("create listing directory");
+    for (name, content) in [
+        ("alpha", "a"),
+        ("trailing ", "ab"),
+        ("two words", "abc"),
+        (".hidden", "hidden"),
+    ] {
+        fs::write(directory.join(name), content).expect("write entry");
+    }
+    for flags in [vec![], vec!["-1"], vec!["--plain"]] {
+        let output = lx_command(&temp_dir)
+            .env("CLICOLOR_FORCE", "1")
+            .args(flags)
+            .arg(&directory)
+            .output()
+            .expect("capture plain listing");
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty());
+        assert_eq!(output.stdout, b"child\nalpha\ntrailing \ntwo words\n");
+    }
+
+    fs::write(directory.join("line\nbreak"), "abcd").expect("write newline name");
+    let invalid_name = std::ffi::OsStr::from_bytes(b"invalid-\xff");
+    let supports_non_utf8 = match fs::write(directory.join(invalid_name), "abcde") {
+        Ok(()) => true,
+        // macOS filesystems can require valid UTF-8 filenames.
+        Err(error)
+            if cfg!(target_os = "macos")
+                && matches!(error.raw_os_error(), Some(libc::EPERM | libc::EINVAL)) =>
+        {
+            false
+        }
+        Err(error) => panic!("write non-UTF-8 name: {error}"),
+    };
+    let output = lx_command(&temp_dir)
+        .env("CLICOLOR_FORCE", "1")
+        .args(["--zero", "-a"])
+        .arg(&directory)
+        .output()
+        .expect("capture NUL-separated listing");
+    assert!(output.status.success());
+    let mut expected = b"child\0.hidden\0alpha\0".to_vec();
+    if supports_non_utf8 {
+        expected.extend_from_slice(b"invalid-\xff\0");
+    }
+    expected.extend_from_slice(b"line\nbreak\0trailing \0two words\0");
+    assert_eq!(output.stdout, expected);
+
+    let output = lx_command(&temp_dir)
+        .args(["-0fs", "size", "desc", "-x", "two*"])
+        .arg(&directory)
+        .output()
+        .expect("capture sorted and filtered listing");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let mut expected = Vec::new();
+    if supports_non_utf8 {
+        expected.extend_from_slice(b"invalid-\xff\0");
+    }
+    expected.extend_from_slice(b"line\nbreak\0trailing \0alpha\0");
+    assert_eq!(output.stdout, expected);
+
+    let target = directory.join(invalid_name);
+    let output = lx_command(&temp_dir)
+        .arg("--zero")
+        .arg(&target)
+        .output()
+        .expect("list non-UTF-8 target");
+    if supports_non_utf8 {
+        assert!(output.status.success());
+        let mut expected = target.as_os_str().as_bytes().to_vec();
+        expected.push(0);
+        assert_eq!(output.stdout, expected);
+    } else {
+        assert_eq!(output.status.code(), Some(1));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("lx: cannot access"));
+    }
+
+    let output = lx_command(&temp_dir)
+        .arg("--zero")
+        .arg(directory.join("child"))
+        .output()
+        .expect("list empty directory");
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+    fs::remove_dir_all(temp_dir).expect("remove test directory");
+}
+
+#[test]
+fn closed_output_exits_quietly_across_display_modes() {
+    let temp_dir = create_temp_dir("closed-output");
+    fs::write(temp_dir.join("entry"), "example").expect("write entry");
+    for flags in [
+        vec![],
+        vec!["--plain"],
+        vec!["--zero"],
+        vec!["-c"],
+        vec!["-l"],
+        vec!["-r"],
+        vec!["-lr"],
+        vec!["--git", "-1"],
+    ] {
+        let (writer, reader) = UnixStream::pair().expect("create output stream");
+        drop(reader);
+        let writer: OwnedFd = writer.into();
+        let output = lx_command(&temp_dir)
+            .args(&flags)
+            .arg(&temp_dir)
+            .stdout(Stdio::from(writer))
+            .output()
+            .expect("write to a closed consumer");
+        assert!(
+            output.status.success(),
+            "failed for {flags:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            output.stderr.is_empty(),
+            "unexpected diagnostic for {flags:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     fs::remove_dir_all(temp_dir).expect("remove test directory");
 }

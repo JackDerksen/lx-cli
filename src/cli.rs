@@ -2,6 +2,7 @@ use crate::sort::{SortField, SortOptions, SortOrder};
 /// Defines CLI arguments using `clap`.
 use clap::{ArgGroup, Parser};
 use std::ffi::OsString;
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -18,13 +19,19 @@ use std::ffi::OsString;
 )]
 pub struct Args {
     #[arg(default_value = ".")]
-    pub target: String,
+    pub target: PathBuf,
 
     #[arg(short, long, help = "Use a long listing format")]
     pub long: bool,
 
     #[arg(long, help = "Show Git status, including changes beneath directories")]
     pub git: bool,
+
+    #[arg(long, help = "Print undecorated filenames, one per line", conflicts_with_all = ["long", "compact", "recursive", "git", "zero"])]
+    pub plain: bool,
+
+    #[arg(short = '0', long, help = "Print undecorated filenames separated by NUL bytes", conflicts_with_all = ["long", "compact", "recursive", "git", "plain"])]
+    pub zero: bool,
 
     #[arg(
         short = 'a',
@@ -201,7 +208,7 @@ fn is_short_flag_group_ending_in_sort(argument: &str) -> bool {
         && flags.ends_with('s')
         && flags[..flags.len() - 1]
             .chars()
-            .all(|flag| matches!(flag, 'a' | 'l' | 'f' | 'd' | '1' | 'c' | 'r'))
+            .all(|flag| matches!(flag, 'a' | 'l' | 'f' | 'd' | '0' | '1' | 'c' | 'r'))
 }
 
 fn is_sort_order(argument: &OsString) -> bool {
@@ -221,7 +228,7 @@ mod tests {
         assert!(args.show_hidden);
         assert!(args.long);
         assert!(args.recursive);
-        assert_eq!(args.target, ".");
+        assert_eq!(args.target, std::path::Path::new("."));
         assert!(
             Args::try_parse_from(["lx", "-c"])
                 .expect("parse -c")
@@ -241,5 +248,9 @@ mod tests {
         assert_eq!(sort.sort, Some(SortField::Size));
         assert_eq!(sort.sort_order, Some(SortOrder::Desc));
         assert!(Args::try_parse_from(["lx", "--sort-order", "desc"]).is_err());
+        assert!(Args::try_parse_from(["lx", "--zero", "--git"]).is_err());
+        assert!(Args::try_parse_from(["lx", "--plain", "-l"]).is_err());
+        assert!(Args::try_parse_from(["lx", "--zero", "--plain"]).is_err());
+        assert!(Args::try_parse_from(["lx", "-01"]).expect("parse -01").zero);
     }
 }

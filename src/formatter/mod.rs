@@ -5,13 +5,14 @@ mod short;
 mod tree;
 
 pub use long::format_long;
-pub use one_per_line::format_one_per_line;
+pub use one_per_line::{format_one_per_line, format_plain};
 pub use recursive::format_recursive;
 pub use short::{format_short, format_short_compact};
 
 use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
 use colored::Colorize;
+use std::io::{self, Write};
 use unicode_width::UnicodeWidthStr;
 
 fn format_filename(entry: &FileEntry, config: &Config) -> String {
@@ -46,4 +47,10 @@ fn entry_width(entry: &FileEntry, config: &Config) -> usize {
         + UnicodeWidthStr::width(icon.as_str())
         + usize::from(!icon.is_empty())
         + if entry.git_status.is_some() { 2 } else { 0 }
+}
+
+fn print_line(arguments: std::fmt::Arguments<'_>) -> io::Result<()> {
+    let mut stdout = io::stdout().lock();
+    stdout.write_fmt(arguments)?;
+    stdout.write_all(b"\n")
 }

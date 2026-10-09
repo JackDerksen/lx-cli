@@ -1,23 +1,29 @@
 use crate::config::Config;
 use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry, FileType};
+use crate::formatter::print_line;
 use crate::sort::{SortOptions, sort_entries};
 use colored::Colorize;
+use std::io;
 use unicode_width::UnicodeWidthStr;
 
-pub fn format_long(mut entries: Vec<FileEntry>, config: &Config, sort: SortOptions) {
+pub fn format_long(
+    mut entries: Vec<FileEntry>,
+    config: &Config,
+    sort: SortOptions,
+) -> io::Result<()> {
     sort_entries(&mut entries, sort);
 
-    print_long_entries(&entries, config, "");
+    print_long_entries(&entries, config, "")
 }
 
-pub fn print_long_entries(entries: &[FileEntry], config: &Config, prefix: &str) {
+pub fn print_long_entries(entries: &[FileEntry], config: &Config, prefix: &str) -> io::Result<()> {
     if entries.is_empty() {
-        return;
+        return Ok(());
     }
 
     let fields = &config.display.long_format_fields;
     let widths = calculate_column_widths(entries, fields, config);
-    print_long_entries_with_widths(entries, config, prefix, fields, &widths);
+    print_long_entries_with_widths(entries, config, prefix, fields, &widths)
 }
 
 pub fn calculate_column_widths(
@@ -97,13 +103,13 @@ pub fn print_long_entries_with_widths(
     prefix: &str,
     fields: &[String],
     widths: &std::collections::HashMap<String, usize>,
-) {
+) -> io::Result<()> {
     if config.display.long_format_titles {
-        print_long_titles(config, prefix, fields, widths);
+        print_long_titles(config, prefix, fields, widths)?;
     }
     print_long_entries_with_optional_filename_prefixes(
         entries, config, prefix, fields, widths, None,
-    );
+    )
 }
 
 pub fn print_long_entries_with_filename_prefixes(
@@ -112,9 +118,9 @@ pub fn print_long_entries_with_filename_prefixes(
     config: &Config,
     fields: &[String],
     widths: &std::collections::HashMap<String, usize>,
-) {
+) -> io::Result<()> {
     if config.display.long_format_titles {
-        print_long_titles(config, "", fields, widths);
+        print_long_titles(config, "", fields, widths)?;
     }
     print_long_entries_with_optional_filename_prefixes(
         entries,
@@ -123,7 +129,7 @@ pub fn print_long_entries_with_filename_prefixes(
         fields,
         widths,
         Some(filename_prefixes),
-    );
+    )
 }
 
 fn print_long_entries_with_optional_filename_prefixes(
@@ -133,7 +139,7 @@ fn print_long_entries_with_optional_filename_prefixes(
     fields: &[String],
     widths: &std::collections::HashMap<String, usize>,
     filename_prefixes: Option<&[String]>,
-) {
+) -> io::Result<()> {
     let modified_values = format_modified_entries(entries, &config.display.datetime_format);
 
     // Print each entry
@@ -229,8 +235,9 @@ fn print_long_entries_with_optional_filename_prefixes(
             .map(|part| part.as_str())
             .filter(|part| !part.is_empty())
             .collect();
-        println!("{}{}", prefix, visible_parts.join("  "));
+        print_line(format_args!("{}{}", prefix, visible_parts.join("  ")))?;
     }
+    Ok(())
 }
 
 fn format_modified_entries(entries: &[FileEntry], datetime_format: &str) -> Vec<String> {
@@ -280,7 +287,7 @@ fn print_long_titles(
     prefix: &str,
     fields: &[String],
     widths: &std::collections::HashMap<String, usize>,
-) {
+) -> io::Result<()> {
     let titles: Vec<String> = fields
         .iter()
         .enumerate()
@@ -300,7 +307,7 @@ fn print_long_titles(
         })
         .collect();
 
-    println!("{}{}", prefix, titles.join("  "));
+    print_line(format_args!("{}{}", prefix, titles.join("  ")))
 }
 
 fn column_title(field: &str) -> &str {

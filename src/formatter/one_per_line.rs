@@ -1,35 +1,42 @@
 use crate::config::Config;
-use crate::file_entry::{FileEntry, FileType};
-use crate::formatter::format_short_entry;
+use crate::file_entry::FileEntry;
+use crate::formatter::{format_short_entry, print_line};
 use crate::sort::{SortOptions, sort_entries};
+use std::io::{self, BufWriter, Write};
+use std::os::unix::ffi::OsStrExt;
+use std::path::Path;
 
-pub fn format_one_per_line(mut entries: Vec<FileEntry>, config: &Config, sort: SortOptions) {
+pub fn format_one_per_line(
+    mut entries: Vec<FileEntry>,
+    config: &Config,
+    sort: SortOptions,
+) -> io::Result<()> {
     sort_entries(&mut entries, sort);
-
-    if sort.is_custom() {
-        print_entries(&entries, config);
-        return;
+    for entry in &entries {
+        print_line(format_args!("{}", format_short_entry(entry, config)))?;
     }
-
-    let mut directories: Vec<FileEntry> = Vec::new();
-    let mut executables: Vec<FileEntry> = Vec::new();
-    let mut regular_files: Vec<FileEntry> = Vec::new();
-
-    for entry in entries {
-        match entry.get_file_type() {
-            FileType::Directory => directories.push(entry),
-            FileType::Executable => executables.push(entry),
-            FileType::RegularFile => regular_files.push(entry),
-        }
-    }
-
-    print_entries(&directories, config);
-    print_entries(&executables, config);
-    print_entries(&regular_files, config);
+    Ok(())
 }
 
-fn print_entries(entries: &[FileEntry], config: &Config) {
+/// Writes raw filename bytes without styling, separated by newline or NUL.
+pub fn format_plain(
+    mut entries: Vec<FileEntry>,
+    target: &Path,
+    sort: SortOptions,
+    zero: bool,
+) -> io::Result<()> {
+    sort_entries(&mut entries, sort);
+    let is_directory = target.is_dir();
+    let separator = if zero { b"\0" } else { b"\n" };
+    let mut stdout = BufWriter::new(io::stdout().lock());
     for entry in entries {
-        println!("{}", format_short_entry(entry, config));
+        let name = if is_directory {
+            entry.path.as_os_str()
+        } else {
+            target.as_os_str()
+        };
+        stdout.write_all(name.as_bytes())?;
+        stdout.write_all(separator)?;
     }
+    stdout.flush()
 }

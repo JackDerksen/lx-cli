@@ -4,6 +4,7 @@ use crate::filter::EntryFilter;
 use crate::formatter::long::{
     calculate_column_widths_with_filename_prefixes, print_long_entries_with_filename_prefixes,
 };
+use crate::formatter::print_line;
 use crate::formatter::tree::{TreeEntry, TreeRenderer};
 use crate::formatter::{format_long, format_one_per_line, format_short_entry};
 use crate::git::GitRepository;
@@ -33,9 +34,9 @@ pub fn format_recursive(
         }
 
         if use_long_format {
-            format_long(entries, config, sort);
+            format_long(entries, config, sort)?;
         } else {
-            format_one_per_line(entries, config, sort);
+            format_one_per_line(entries, config, sort)?;
         }
         return Ok(());
     }
@@ -77,16 +78,20 @@ pub fn format_recursive(
     let tree_entries = renderer.collect(path, show_hidden, metadata_mode)?;
 
     if use_long_format {
-        print_nested_long_tree(&root, &tree_entries, config);
+        print_nested_long_tree(&root, &tree_entries, config)?;
     } else {
-        print_tree_root(&root, config);
-        print_short_tree(&tree_entries, config);
+        print_tree_root(&root, config)?;
+        print_short_tree(&tree_entries, config)?;
     }
 
     Ok(())
 }
 
-fn print_nested_long_tree(root: &FileEntry, tree_entries: &[TreeEntry], config: &Config) {
+fn print_nested_long_tree(
+    root: &FileEntry,
+    tree_entries: &[TreeEntry],
+    config: &Config,
+) -> io::Result<()> {
     let mut display_entries = Vec::with_capacity(tree_entries.len() + 1);
     let mut filename_prefixes = vec![String::new()];
     display_entries.push(display_entry(root));
@@ -114,21 +119,25 @@ fn print_nested_long_tree(root: &FileEntry, tree_entries: &[TreeEntry], config: 
         config,
         fields,
         &widths,
-    );
+    )
 }
 
-fn print_tree_root(root: &FileEntry, config: &Config) {
-    println!("{}", format_short_entry(&display_entry(root), config));
+fn print_tree_root(root: &FileEntry, config: &Config) -> io::Result<()> {
+    print_line(format_args!(
+        "{}",
+        format_short_entry(&display_entry(root), config)
+    ))
 }
 
-fn print_short_tree(tree_entries: &[TreeEntry], config: &Config) {
+fn print_short_tree(tree_entries: &[TreeEntry], config: &Config) -> io::Result<()> {
     for tree_entry in tree_entries {
-        println!(
+        print_line(format_args!(
             "{} {}",
             tree_entry.branch,
             format_short_entry(&display_entry(&tree_entry.entry), config)
-        );
+        ))?;
     }
+    Ok(())
 }
 
 fn display_entry(entry: &FileEntry) -> FileEntry {
