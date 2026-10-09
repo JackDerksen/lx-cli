@@ -24,7 +24,11 @@ pub struct Args {
     #[arg(short, long, help = "Use a long listing format")]
     pub long: bool,
 
-    #[arg(long, help = "Show Git status, including changes beneath directories")]
+    #[arg(
+        short = 'G',
+        long,
+        help = "Show Git status, including changes beneath directories"
+    )]
     pub git: bool,
 
     #[arg(long, help = "Print undecorated filenames, one per line", conflicts_with_all = ["long", "compact", "recursive", "git", "zero"])]
@@ -208,7 +212,7 @@ fn is_short_flag_group_ending_in_sort(argument: &str) -> bool {
         && flags.ends_with('s')
         && flags[..flags.len() - 1]
             .chars()
-            .all(|flag| matches!(flag, 'a' | 'l' | 'f' | 'd' | '0' | '1' | 'c' | 'r'))
+            .all(|flag| matches!(flag, 'a' | 'l' | 'f' | 'd' | '0' | '1' | 'c' | 'r' | 'G'))
 }
 
 fn is_sort_order(argument: &OsString) -> bool {
@@ -252,5 +256,22 @@ mod tests {
         assert!(Args::try_parse_from(["lx", "--plain", "-l"]).is_err());
         assert!(Args::try_parse_from(["lx", "--zero", "--plain"]).is_err());
         assert!(Args::try_parse_from(["lx", "-01"]).expect("parse -01").zero);
+        for flag in ["-G", "--git"] {
+            assert!(
+                Args::try_parse_from(["lx", flag])
+                    .expect("parse Git flag")
+                    .git
+            );
+        }
+        let git = Args::try_parse_from(["lx", "-lG"]).expect("parse -lG");
+        assert!(git.long && git.git);
+        let git_sort = Args::try_parse_args_from(["lx", "-Gs", "name", "desc"])
+            .expect("parse grouped Git and sort flags");
+        assert!(git_sort.git);
+        assert_eq!(git_sort.sort, Some(SortField::Name));
+        assert_eq!(git_sort.sort_order, Some(SortOrder::Desc));
+        assert_eq!(git_sort.target, std::path::Path::new("."));
+        assert!(Args::try_parse_from(["lx", "-0G"]).is_err());
+        assert!(Args::try_parse_from(["lx", "--plain", "-G"]).is_err());
     }
 }

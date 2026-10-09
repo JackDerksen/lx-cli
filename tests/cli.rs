@@ -100,6 +100,7 @@ fn git_status_works_across_display_modes_and_worktrees() {
 
     for flags in [
         vec!["--git"],
+        vec!["-G"],
         vec!["--git", "-c"],
         vec!["--git", "-1"],
         vec!["--git", "-r"],

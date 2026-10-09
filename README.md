@@ -126,7 +126,8 @@ lx -r
 
 # Show Git status beside entries (also works with -l, -1, -c, and -r)
 lx --git
-lx -lr --git src
+lx -G
+lx -lrG src
 
 # Show only directories or only files
 lx -d
@@ -150,7 +151,7 @@ lx /path/to/directory
 ## Flags
 
 - `-l`, `--long`: Use a long listing format with detailed file information
-- `--git`: Show Git status for entries and summarise changes beneath directories
+- `-G`, `--git`: Show Git status for entries and summarise changes beneath directories
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
 - `-f`, `--files`: Show only files (not available with `-r`)
 - `-d`, `--directories`: Show only directories (not available with `-r`)
