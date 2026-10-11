@@ -25,7 +25,7 @@ pub struct Args {
     pub long: bool,
 
     #[arg(
-        short = 'G',
+        short = 'g',
         long,
         help = "Show Git status, including changes beneath directories"
     )]
@@ -227,7 +227,7 @@ fn is_short_flag_group_ending_in_sort(argument: &str) -> bool {
         && flags.ends_with('s')
         && flags[..flags.len() - 1]
             .chars()
-            .all(|flag| matches!(flag, 'a' | 'l' | 'f' | 'd' | '0' | '1' | 'c' | 'r' | 'G'))
+            .all(|flag| matches!(flag, 'a' | 'l' | 'f' | 'd' | '0' | '1' | 'c' | 'r' | 'g'))
 }
 
 fn is_sort_order(argument: &OsString) -> bool {
@@ -271,23 +271,23 @@ mod tests {
         assert!(Args::try_parse_from(["lx", "--plain", "-l"]).is_err());
         assert!(Args::try_parse_from(["lx", "--zero", "--plain"]).is_err());
         assert!(Args::try_parse_from(["lx", "-01"]).expect("parse -01").zero);
-        for flag in ["-G", "--git"] {
+        for flag in ["-g", "--git"] {
             assert!(
                 Args::try_parse_from(["lx", flag])
                     .expect("parse Git flag")
                     .git
             );
         }
-        let git = Args::try_parse_from(["lx", "-lG"]).expect("parse -lG");
+        let git = Args::try_parse_from(["lx", "-lg"]).expect("parse -lg");
         assert!(git.long && git.git);
-        let git_sort = Args::try_parse_args_from(["lx", "-Gs", "name", "desc"])
+        let git_sort = Args::try_parse_args_from(["lx", "-gs", "name", "desc"])
             .expect("parse grouped Git and sort flags");
         assert!(git_sort.git);
         assert_eq!(git_sort.sort, Some(SortField::Name));
         assert_eq!(git_sort.sort_order, Some(SortOrder::Desc));
         assert_eq!(git_sort.target, std::path::Path::new("."));
-        assert!(Args::try_parse_from(["lx", "-0G"]).is_err());
-        assert!(Args::try_parse_from(["lx", "--plain", "-G"]).is_err());
+        assert!(Args::try_parse_from(["lx", "-0g"]).is_err());
+        assert!(Args::try_parse_from(["lx", "--plain", "-g"]).is_err());
         let tree = Args::try_parse_from(["lx", "-r", "--depth", "0", "--git-ignore"])
             .expect("parse tree controls");
         assert_eq!(tree.depth, Some(0));

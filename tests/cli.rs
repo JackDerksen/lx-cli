@@ -19,7 +19,10 @@ fn create_temp_dir(label: &str) -> PathBuf {
 
 fn lx_command(home_dir: &Path) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_lx"));
-    command.env("HOME", home_dir);
+    command
+        .env("HOME", home_dir)
+        .env("NO_COLOR", "1")
+        .env_remove("CLICOLOR_FORCE");
     command
 }
 
@@ -100,7 +103,7 @@ fn git_status_works_across_display_modes_and_worktrees() {
 
     for flags in [
         vec!["--git"],
-        vec!["-G"],
+        vec!["-g"],
         vec!["--git", "-c"],
         vec!["--git", "-1"],
         vec!["--git", "-r"],
