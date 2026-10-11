@@ -6,7 +6,7 @@ mod tree;
 
 pub use long::format_long;
 pub use one_per_line::{format_one_per_line, format_plain};
-pub use recursive::format_recursive;
+pub use recursive::{TreeOptions, format_recursive};
 pub use short::{format_short, format_short_compact};
 
 use crate::config::Config;

@@ -1,7 +1,7 @@
 use lx_cli::config::load_config;
 use lx_cli::filter::EntryFilter;
 use lx_cli::formatter::{
-    format_long, format_one_per_line, format_plain, format_recursive, format_short,
+    TreeOptions, format_long, format_one_per_line, format_plain, format_recursive, format_short,
     format_short_compact,
 };
 use lx_cli::git::GitRepository;
@@ -58,10 +58,16 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let git = if args.git {
-        match GitRepository::load(target_path) {
+    let repository = if args.git || args.git_ignore {
+        match GitRepository::load(target_path, args.git_ignore) {
             Ok(repository) => repository,
             Err(error) => {
+                if args.git_ignore {
+                    return Err(io::Error::other(format!(
+                        "lx: cannot read Git ignore rules: {error}"
+                    ))
+                    .into());
+                }
                 eprintln!("lx: cannot read Git status: {error}");
                 None
             }
@@ -69,6 +75,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         None
     };
+    let git = repository.as_ref().filter(|_| args.git);
     if git.is_some() {
         if !config
             .display
@@ -92,11 +99,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         format_recursive(
             target_path,
             &config,
-            args.show_hidden,
-            args.long,
+            &TreeOptions {
+                show_hidden: args.show_hidden,
+                use_long_format: args.long,
+                depth: args.depth,
+                ignored: repository.as_ref().filter(|_| args.git_ignore),
+            },
             &filter,
             sort,
-            git.as_ref(),
+            git,
         )?;
     } else {
         let metadata_mode = if args.long || sort.requires_full_metadata() {

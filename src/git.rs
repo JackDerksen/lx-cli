@@ -1,6 +1,6 @@
 use crate::config::{GitColorConfig, parse_color};
 use colored::Colorize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
@@ -69,11 +69,12 @@ impl GitStatus {
 #[derive(Debug)]
 pub struct GitRepository {
     statuses: HashMap<PathBuf, GitStatus>,
+    ignored: HashSet<PathBuf>,
 }
 
 impl GitRepository {
-    /// Returns `None` outside a working tree; reports Git failures separately.
-    pub fn load(target: &Path) -> io::Result<Option<Self>> {
+    /// Returns `None` outside a working tree; optionally collects ignored paths.
+    pub fn load(target: &Path, include_ignored: bool) -> io::Result<Option<Self>> {
         let directory = if target.is_dir() {
             target
         } else {
@@ -90,18 +91,26 @@ impl GitRepository {
             return Ok(None);
         };
 
-        let output = Command::new("git")
+        let mut command = Command::new("git");
+        command
             .arg("--no-optional-locks")
             .arg("-C")
             .arg(root)
-            .args(["status", "--porcelain=v1", "-z", "--untracked-files=all"])
-            .output()?;
+            .args(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+        if include_ignored {
+            command.arg("--ignored=matching");
+        }
+        let output = command.output()?;
         if !output.status.success() {
             return Err(io::Error::other(
                 String::from_utf8_lossy(&output.stderr).trim().to_string(),
             ));
         }
-        Self::from_porcelain(root, &output.stdout).map(Some)
+        let mut repository = Self::from_porcelain(root, &output.stdout)?;
+        if include_ignored {
+            repository.ignored.insert(root.join(".git"));
+        }
+        Ok(Some(repository))
     }
 
     /// Annotates entries returned by `read_target` with this repository's status.
@@ -125,9 +134,15 @@ impl GitRepository {
         self.statuses.get(path).copied().unwrap_or(GitStatus::Clean)
     }
 
+    pub(crate) fn is_ignored(&self, path: &Path) -> bool {
+        path.ancestors()
+            .any(|ancestor| self.ignored.contains(ancestor))
+    }
+
     fn from_porcelain(root: &Path, output: &[u8]) -> io::Result<Self> {
         let mut repository = Self {
             statuses: HashMap::new(),
+            ignored: HashSet::new(),
         };
         let mut records = output.split(|byte| *byte == 0);
         while let Some(record) = records.next() {
@@ -141,8 +156,12 @@ impl GitRepository {
                 ));
             }
             let codes = [record[0], record[1]];
-            let status = GitStatus::from_codes(codes);
             let path = root.join(OsStr::from_bytes(&record[3..]));
+            if codes == *b"!!" {
+                repository.ignored.insert(path);
+                continue;
+            }
+            let status = GitStatus::from_codes(codes);
             repository.record_path(root, &path, status);
 
             if codes.iter().any(|code| matches!(code, b'R' | b'C')) {
@@ -187,7 +206,14 @@ mod tests {
     #[test]
     fn parses_paths_and_aggregates_changes_without_marking_clean_siblings() {
         let root = Path::new("/repo");
-        let repository = GitRepository::from_porcelain(root, b" M src/space name\0A  src/added\0?? src/new/nested/file\0R  destination/renamed\0source/old\0UU conflict\0 M invalid-\xff\0D  deleted/staged\0 D deleted/unstaged\0").expect("parse status");
+        let repository = GitRepository::from_porcelain(root, b" M src/space name\0A  src/added\0?? src/new/nested/file\0R  destination/renamed\0source/old\0UU conflict\0 M invalid-\xff\0D  deleted/staged\0 D deleted/unstaged\0!! cache/\0!! ignored-\xff\0").expect("parse status");
+        assert!(repository.is_ignored(Path::new("/repo/cache/nested/file")));
+        assert!(!repository.is_ignored(Path::new("/repo/cache-other")));
+        assert!(repository.is_ignored(&root.join(std::ffi::OsStr::from_bytes(b"ignored-\xff"))));
+        assert_eq!(
+            repository.status(Path::new("/repo/cache")),
+            GitStatus::Clean
+        );
         assert_eq!(
             repository.status(Path::new("/repo/src/space name")),
             GitStatus::Modified

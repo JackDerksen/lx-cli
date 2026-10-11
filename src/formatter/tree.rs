@@ -1,5 +1,6 @@
 use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
+use crate::formatter::TreeOptions;
 use crate::git::GitRepository;
 use crate::reader::{MetadataMode, read_directory_entries};
 use crate::sort::{DefaultSort, SortOptions, sort_discovered_entries};
@@ -18,6 +19,7 @@ pub struct TreeRenderer<'a> {
     sort: SortOptions,
     default_sort: DefaultSort,
     git: Option<&'a GitRepository>,
+    options: &'a TreeOptions<'a>,
 }
 
 impl<'a> TreeRenderer<'a> {
@@ -28,6 +30,7 @@ impl<'a> TreeRenderer<'a> {
         sort: SortOptions,
         default_sort: DefaultSort,
         git: Option<&'a GitRepository>,
+        options: &'a TreeOptions<'a>,
     ) -> Self {
         Self {
             style,
@@ -36,32 +39,52 @@ impl<'a> TreeRenderer<'a> {
             sort,
             default_sort,
             git,
+            options,
         }
     }
 
-    pub fn collect(
-        &self,
-        path: &Path,
-        show_hidden: bool,
-        metadata_mode: MetadataMode,
-    ) -> io::Result<Vec<TreeEntry>> {
+    pub fn collect(&self, path: &Path, metadata_mode: MetadataMode) -> io::Result<Vec<TreeEntry>> {
         let mut tree_entries = Vec::new();
-        let canonical_path = self.git.map(|_| path.canonicalize()).transpose()?;
+        let canonical_path = self
+            .git
+            .or(self.options.ignored)
+            .map(|_| path.canonicalize())
+            .transpose()?;
         let path = canonical_path.as_deref().unwrap_or(path);
-        self.collect_directory(path, show_hidden, metadata_mode, "", &mut tree_entries)?;
+        self.collect_directory(
+            path,
+            metadata_mode,
+            "",
+            self.options.depth,
+            &mut tree_entries,
+        )?;
         Ok(tree_entries)
     }
 
     fn collect_directory(
         &self,
         path: &Path,
-        show_hidden: bool,
         metadata_mode: MetadataMode,
         prefix: &str,
+        remaining_depth: Option<usize>,
         tree_entries: &mut Vec<TreeEntry>,
     ) -> io::Result<()> {
-        let mut entries = read_directory_entries(path, show_hidden, metadata_mode)?;
-        entries.retain(|entry| self.filter.includes(&entry.entry));
+        if remaining_depth == Some(0)
+            || self
+                .options
+                .ignored
+                .is_some_and(|repository| repository.is_ignored(path))
+        {
+            return Ok(());
+        }
+        let mut entries = read_directory_entries(path, self.options.show_hidden, metadata_mode)?;
+        entries.retain(|entry| {
+            self.filter.includes(&entry.entry)
+                && !self
+                    .options
+                    .ignored
+                    .is_some_and(|repository| repository.is_ignored(&entry.full_path))
+        });
         if let Some(repository) = self.git {
             for discovered in &mut entries {
                 discovered.entry.git_status = Some(repository.status(&discovered.full_path));
@@ -81,9 +104,9 @@ impl<'a> TreeRenderer<'a> {
             if discovered_entry.entry.is_dir {
                 self.collect_directory(
                     &discovered_entry.full_path,
-                    show_hidden,
                     metadata_mode,
                     &child_prefix,
+                    remaining_depth.map(|depth| depth - 1),
                     tree_entries,
                 )?;
             }

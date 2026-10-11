@@ -13,27 +13,33 @@ use crate::sort::{DefaultSort, SortOptions};
 use std::io;
 use std::path::Path;
 
+pub struct TreeOptions<'a> {
+    pub show_hidden: bool,
+    pub use_long_format: bool,
+    pub depth: Option<usize>,
+    pub ignored: Option<&'a GitRepository>,
+}
+
 pub fn format_recursive(
     path: &Path,
     config: &Config,
-    show_hidden: bool,
-    use_long_format: bool,
+    options: &TreeOptions<'_>,
     filter: &EntryFilter,
     sort: SortOptions,
     git: Option<&GitRepository>,
 ) -> io::Result<()> {
+    let metadata_mode = if options.use_long_format || sort.requires_full_metadata() {
+        MetadataMode::Full
+    } else {
+        MetadataMode::Basic
+    };
     if !path.is_dir() {
-        let metadata_mode = if use_long_format || sort.requires_full_metadata() {
-            MetadataMode::Full
-        } else {
-            MetadataMode::Basic
-        };
-        let mut entries = filter.apply(read_target(path, show_hidden, metadata_mode)?);
+        let mut entries = filter.apply(read_target(path, options.show_hidden, metadata_mode)?);
         if let Some(repository) = git {
             repository.annotate(path, &mut entries)?;
         }
 
-        if use_long_format {
+        if options.use_long_format {
             format_long(entries, config, sort)?;
         } else {
             format_one_per_line(entries, config, sort)?;
@@ -41,11 +47,6 @@ pub fn format_recursive(
         return Ok(());
     }
 
-    let metadata_mode = if use_long_format || sort.requires_full_metadata() {
-        MetadataMode::Full
-    } else {
-        MetadataMode::Basic
-    };
     let mut root = read_entry(path, metadata_mode)?;
     if let Some(repository) = git {
         root.git_status = Some(repository.status(&path.canonicalize()?));
@@ -54,7 +55,7 @@ pub fn format_recursive(
         return Ok(());
     }
 
-    let uses_icons = !use_long_format
+    let uses_icons = !options.use_long_format
         && [
             config.icons.directory.as_str(),
             config.icons.executable.as_str(),
@@ -62,7 +63,7 @@ pub fn format_recursive(
         ]
         .iter()
         .any(|icon| !icon.is_empty());
-    let default_sort = if use_long_format {
+    let default_sort = if options.use_long_format {
         DefaultSort::TypeThenName
     } else {
         DefaultSort::Name
@@ -74,10 +75,11 @@ pub fn format_recursive(
         sort,
         default_sort,
         git,
+        options,
     );
-    let tree_entries = renderer.collect(path, show_hidden, metadata_mode)?;
+    let tree_entries = renderer.collect(path, metadata_mode)?;
 
-    if use_long_format {
+    if options.use_long_format {
         print_nested_long_tree(&root, &tree_entries, config)?;
     } else {
         print_tree_root(&root, config)?;

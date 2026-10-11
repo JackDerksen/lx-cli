@@ -108,6 +108,21 @@ pub struct Args {
         help = "Show directory tree recursively"
     )]
     pub recursive: bool,
+
+    #[arg(
+        long,
+        value_name = "LEVELS",
+        requires = "recursive",
+        help = "Limit tree depth (0 shows only the root)"
+    )]
+    pub depth: Option<usize>,
+
+    #[arg(
+        long,
+        requires = "recursive",
+        help = "Omit Git-ignored entries and Git metadata from the tree"
+    )]
+    pub git_ignore: bool,
 }
 
 impl Args {
@@ -273,5 +288,17 @@ mod tests {
         assert_eq!(git_sort.target, std::path::Path::new("."));
         assert!(Args::try_parse_from(["lx", "-0G"]).is_err());
         assert!(Args::try_parse_from(["lx", "--plain", "-G"]).is_err());
+        let tree = Args::try_parse_from(["lx", "-r", "--depth", "0", "--git-ignore"])
+            .expect("parse tree controls");
+        assert_eq!(tree.depth, Some(0));
+        assert!(tree.git_ignore);
+        for arguments in [
+            vec!["lx", "--depth", "1"],
+            vec!["lx", "--git-ignore"],
+            vec!["lx", "-r", "--depth", "-1"],
+            vec!["lx", "-r", "--depth", "invalid"],
+        ] {
+            assert!(Args::try_parse_from(arguments).is_err());
+        }
     }
 }

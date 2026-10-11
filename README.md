@@ -124,6 +124,13 @@ lx -c
 # Show directory tree recursively
 lx -r
 
+# Limit the tree to two levels below the root
+lx -r --depth 2
+
+# Skip Git-ignored entries (combine with Git badges if desired)
+lx -r --git-ignore
+lx -lrG --depth 2 --git-ignore
+
 # Show Git status beside entries (also works with -l, -1, -c, and -r)
 lx --git
 lx -G
@@ -163,6 +170,12 @@ lx /path/to/directory
 - `-0`, `--zero`: Print undecorated filenames separated by NUL bytes
 - `-c`, `--compact`: Use compact columns, wrapping after `compact_max_rows` rows
 - `-r`, `--recursive`: Show directory tree recursively with proper hierarchy
+- `--depth <LEVELS>`: Limit tree traversal; `0` shows only the root, `1` adds its immediate children (requires `-r`)
+- `--git-ignore`: Omit Git-ignored entries and the repository's `.git` metadata (requires `-r`)
+
+Tree controls work with both short (`-r`) and long (`-lr`) output, alongside sorting, `-a`, exclusions, and `-G`. Without `--depth`, traversal is unlimited. Directories beyond the depth limit or excluded from the tree are not opened by lx. Git badges still summarise all changes beneath a directory, including changes beyond the displayed depth.
+
+`--git-ignore` uses Git's ignore rules, including nested `.gitignore` files, exceptions, `.git/info/exclude`, and global exclusions. Tracked files remain visible even when an ignore pattern matches them. It also hides the repository's `.git` entry with `-a`, works in Git worktrees, and does not enable status badges unless `-G` is supplied. Outside a Git working tree it has no effect; inside one, Git must be available. An explicitly selected entry remains visible as the tree root even if ignored, but ignored directories are not expanded.
 
 `-l` and `-1` are treated as separate display modes, so they cannot be combined together. `-c` is only available for short output, so it cannot be combined with `-l`, `-1`, or `-r`. Short flags can still be clustered in the usual Unix style, so combinations like `-la`, `-lr`, and `-alr` work as expected.
 
