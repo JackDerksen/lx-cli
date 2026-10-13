@@ -1,5 +1,5 @@
 /// Handles directory traversal and gathering file metadata.
-use crate::file_entry::FileEntry;
+use crate::file_entry::{FileEntry, Symlink};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
@@ -29,7 +29,7 @@ pub fn read_target(
     show_hidden: bool,
     metadata_mode: MetadataMode,
 ) -> io::Result<Vec<FileEntry>> {
-    if target_path.is_dir() {
+    if fs::symlink_metadata(target_path)?.is_dir() {
         return Ok(
             read_directory_entries(target_path, show_hidden, metadata_mode)?
                 .into_iter()
@@ -64,7 +64,7 @@ pub fn read_directory_entries(
 
         let full_path = entry.path();
         let metadata = entry.metadata()?;
-        let entry = build_file_entry(file_name, &metadata, metadata_mode, &mut cache);
+        let entry = build_file_entry(file_name, &full_path, &metadata, metadata_mode, &mut cache)?;
 
         entries.push(DiscoveredEntry { entry, full_path });
     }
@@ -82,21 +82,35 @@ fn read_file_entry(
     metadata_mode: MetadataMode,
     cache: &mut UserGroupCache,
 ) -> io::Result<FileEntry> {
-    let metadata = fs::metadata(target_path)?;
+    let metadata = fs::symlink_metadata(target_path)?;
     let file_name = target_path
         .file_name()
         .unwrap_or(target_path.as_os_str())
         .to_os_string();
 
-    Ok(build_file_entry(file_name, &metadata, metadata_mode, cache))
+    build_file_entry(file_name, target_path, &metadata, metadata_mode, cache)
 }
 
 fn build_file_entry(
     path: std::ffi::OsString,
+    full_path: &Path,
     metadata: &fs::Metadata,
     metadata_mode: MetadataMode,
     cache: &mut UserGroupCache,
-) -> FileEntry {
+) -> io::Result<FileEntry> {
+    let symlink = if metadata.is_symlink() {
+        let target = fs::read_link(full_path)?;
+        // Permission errors cannot tell us whether a target is broken.
+        let is_broken = fs::metadata(full_path).is_err_and(|error| {
+            matches!(
+                error.raw_os_error(),
+                Some(libc::ENOENT | libc::ENOTDIR | libc::ELOOP)
+            )
+        });
+        Some(Symlink { target, is_broken })
+    } else {
+        None
+    };
     let is_dir = metadata.is_dir();
     let mode = metadata.permissions().mode();
     let (owner, group) = match metadata_mode {
@@ -107,11 +121,11 @@ fn build_file_entry(
         ),
     };
 
-    FileEntry {
+    Ok(FileEntry {
         is_hidden: is_hidden(&path),
         path,
         is_dir,
-        is_executable: !is_dir && (mode & 0o111) != 0,
+        is_executable: metadata.is_file() && (mode & 0o111) != 0,
         mode,
         size: metadata.len(),
         modified: metadata
@@ -121,7 +135,8 @@ fn build_file_entry(
         group,
         nlink: metadata.nlink(),
         git_status: None,
-    }
+        symlink,
+    })
 }
 
 pub(crate) fn is_hidden(file_name: &std::ffi::OsStr) -> bool {

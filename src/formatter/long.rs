@@ -1,6 +1,6 @@
 use crate::config::Config;
-use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry, FileType};
-use crate::formatter::print_line;
+use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry};
+use crate::formatter::{format_filename, print_line};
 use crate::sort::{SortOptions, sort_entries};
 use colored::Colorize;
 use std::io;
@@ -61,7 +61,7 @@ pub fn calculate_column_widths(
                 .unwrap_or(0),
             "filename" => entries
                 .iter()
-                .map(|e| UnicodeWidthStr::width(e.path.to_string_lossy().as_ref()))
+                .map(|entry| UnicodeWidthStr::width(entry.display_name().as_ref()))
                 .max()
                 .unwrap_or(0),
             "permissions" => entries
@@ -200,7 +200,7 @@ fn print_long_entries_with_optional_filename_prefixes(
                     format!("{}", padded.color(icon_color))
                 }
                 "filename" => {
-                    let filename_str = entry.path.to_string_lossy().to_string();
+                    let filename_str = entry.display_name();
                     let width = widths.get("filename").copied().unwrap_or(0);
                     let filename_prefix = filename_prefixes
                         .and_then(|prefixes| prefixes.get(entry_index))
@@ -210,19 +210,12 @@ fn print_long_entries_with_optional_filename_prefixes(
                     let padding = if idx < fields.len() - 1 {
                         width.saturating_sub(
                             UnicodeWidthStr::width(filename_prefix)
-                                + UnicodeWidthStr::width(filename_str.as_str()),
+                                + UnicodeWidthStr::width(filename_str.as_ref()),
                         )
                     } else {
                         0
                     };
-                    let padded = format!("{filename_str}{}", " ".repeat(padding));
-
-                    let filename_colored = match entry.get_file_type() {
-                        FileType::Directory | FileType::Executable => {
-                            padded.color(entry.get_color(&config.colors)).bold()
-                        }
-                        FileType::RegularFile => padded.color(entry.get_color(&config.colors)),
-                    };
+                    let filename_colored = format_filename(entry, config, padding);
                     format!("{filename_prefix}{filename_colored}")
                 }
                 _ => String::new(),

@@ -33,7 +33,7 @@ pub fn format_recursive(
     } else {
         MetadataMode::Basic
     };
-    if !path.is_dir() {
+    if !path.is_dir() || path.is_symlink() {
         let mut entries = filter.apply(read_target(path, options.show_hidden, metadata_mode)?);
         if let Some(repository) = git {
             repository.annotate(path, &mut entries)?;
@@ -60,6 +60,7 @@ pub fn format_recursive(
             config.icons.directory.as_str(),
             config.icons.executable.as_str(),
             config.icons.regular.as_str(),
+            config.icons.symlink.as_str(),
         ]
         .iter()
         .any(|icon| !icon.is_empty());

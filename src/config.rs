@@ -24,6 +24,10 @@ pub struct ColorConfig {
     pub regular: String,
     #[serde(default = "default_hidden_color")]
     pub hidden: String,
+    #[serde(default = "default_symlink_color")]
+    pub symlink: String,
+    #[serde(default = "default_broken_symlink_color")]
+    pub broken_symlink: String,
     #[serde(default)]
     pub git: GitColorConfig,
 }
@@ -60,6 +64,8 @@ pub struct IconConfig {
     pub executable: String,
     #[serde(default = "default_regular_icon")]
     pub regular: String,
+    #[serde(default = "default_symlink_icon")]
+    pub symlink: String,
     #[serde(default)]
     pub colors: IconColorConfig,
 }
@@ -74,6 +80,10 @@ pub struct IconColorConfig {
     pub regular: String,
     #[serde(default = "default_hidden_icon_color")]
     pub hidden: String,
+    #[serde(default = "default_symlink_color")]
+    pub symlink: String,
+    #[serde(default = "default_broken_symlink_color")]
+    pub broken_symlink: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -120,6 +130,7 @@ impl Default for IconConfig {
             directory: default_directory_icon(),
             executable: default_executable_icon(),
             regular: default_regular_icon(),
+            symlink: default_symlink_icon(),
             colors: IconColorConfig::default(),
         }
     }
@@ -132,6 +143,8 @@ impl Default for IconColorConfig {
             executable: default_executable_icon_color(),
             regular: default_regular_icon_color(),
             hidden: default_hidden_icon_color(),
+            symlink: default_symlink_color(),
+            broken_symlink: default_broken_symlink_color(),
         }
     }
 }
@@ -143,6 +156,8 @@ impl Default for ColorConfig {
             executable: default_executable_color(),
             regular: default_regular_color(),
             hidden: default_hidden_color(),
+            symlink: default_symlink_color(),
+            broken_symlink: default_broken_symlink_color(),
             git: GitColorConfig::default(),
         }
     }
@@ -179,6 +194,18 @@ fn default_regular_color() -> String {
 
 fn default_hidden_color() -> String {
     "bright_black".to_string()
+}
+
+fn default_symlink_color() -> String {
+    "cyan".to_string()
+}
+
+fn default_broken_symlink_color() -> String {
+    "bright_red".to_string()
+}
+
+fn default_symlink_icon() -> String {
+    "".to_string()
 }
 
 fn default_column_spacing() -> usize {

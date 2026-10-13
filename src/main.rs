@@ -29,7 +29,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let target_path = args.target.as_path();
 
-    if !target_path.exists() {
+    if !target_path.exists() && !target_path.is_symlink() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
             format!(

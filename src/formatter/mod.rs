@@ -15,17 +15,18 @@ use colored::Colorize;
 use std::io::{self, Write};
 use unicode_width::UnicodeWidthStr;
 
-fn format_filename(entry: &FileEntry, config: &Config) -> String {
-    let filename = entry.path.to_string_lossy();
+fn format_filename(entry: &FileEntry, config: &Config, padding: usize) -> String {
+    let mut filename = entry.display_name().into_owned();
+    filename.extend(std::iter::repeat_n(' ', padding));
     let filename = filename.color(entry.get_color(&config.colors));
     match entry.get_file_type() {
         FileType::Directory | FileType::Executable => filename.bold().to_string(),
-        FileType::RegularFile => filename.to_string(),
+        FileType::RegularFile | FileType::Symlink => filename.to_string(),
     }
 }
 
 fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
-    let filename = format_filename(entry, config);
+    let filename = format_filename(entry, config, 0);
     let icon = entry.get_icon_custom(&config.icons);
     let output = if icon.is_empty() {
         filename
@@ -43,7 +44,7 @@ fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
 
 fn entry_width(entry: &FileEntry, config: &Config) -> usize {
     let icon = entry.get_icon_custom(&config.icons);
-    UnicodeWidthStr::width(entry.path.to_string_lossy().as_ref())
+    UnicodeWidthStr::width(entry.display_name().as_ref())
         + UnicodeWidthStr::width(icon.as_str())
         + usize::from(!icon.is_empty())
         + if entry.git_status.is_some() { 2 } else { 0 }

@@ -19,6 +19,10 @@ regular = "white"
 # Color for hidden files and directories
 hidden = "bright_black"
 
+# Symlink names and targets (broken links also show a [broken] marker)
+symlink = "cyan"
+broken_symlink = "bright_red"
+
 [colors.git]
 # Git badge colours (--git), using the colour names listed above
 clean = "bright_black" # -
@@ -52,6 +56,7 @@ mixed = "yellow"       # *
 directory = ""
 executable = ""
 regular = ""
+symlink = ""
 
 [icons.colors]
 # Custom colors for icons (separate from filename colors)
@@ -61,6 +66,8 @@ directory = "blue"
 executable = "green"
 regular = "white"
 hidden = "bright_black"
+symlink = "cyan"
+broken_symlink = "bright_red"
 
 [display]
 # Number of spaces between columns (default: 2)

@@ -75,7 +75,7 @@ pub struct GitRepository {
 impl GitRepository {
     /// Returns `None` outside a working tree; optionally collects ignored paths.
     pub fn load(target: &Path, include_ignored: bool) -> io::Result<Option<Self>> {
-        let directory = if target.is_dir() {
+        let directory = if target.is_dir() && !target.is_symlink() {
             target
         } else {
             target
@@ -115,7 +115,7 @@ impl GitRepository {
 
     /// Annotates entries returned by `read_target` with this repository's status.
     pub fn annotate(&self, target: &Path, entries: &mut [crate::FileEntry]) -> io::Result<()> {
-        let directory = if target.is_dir() {
+        let directory = if target.is_dir() && !target.is_symlink() {
             target
         } else {
             target

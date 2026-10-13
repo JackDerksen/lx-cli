@@ -3,7 +3,9 @@ use crate::config::{ColorConfig, IconColorConfig, IconConfig};
 use crate::icon::FileIcon;
 use chrono::format::{Item, StrftimeItems};
 use colored::Color;
+use std::borrow::Cow;
 use std::ffi::OsString;
+use std::path::PathBuf;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
@@ -19,11 +21,20 @@ pub struct FileEntry {
     pub group: String,
     pub nlink: u64,
     pub git_status: Option<crate::git::GitStatus>,
+    pub symlink: Option<Symlink>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Symlink {
+    pub target: PathBuf,
+    pub is_broken: bool,
 }
 
 impl FileEntry {
     fn get_file_icon(&self) -> FileIcon {
-        if self.is_dir {
+        if self.symlink.is_some() {
+            FileIcon::Symlink
+        } else if self.is_dir {
             FileIcon::Directory
         } else if self.is_executable {
             FileIcon::Executable
@@ -37,6 +48,13 @@ impl FileEntry {
     }
 
     pub fn get_color(&self, config: &ColorConfig) -> Color {
+        if let Some(link) = &self.symlink {
+            return crate::config::parse_color(if link.is_broken {
+                &config.broken_symlink
+            } else {
+                &config.symlink
+            });
+        }
         if self.is_hidden {
             return config.get_hidden_color();
         }
@@ -45,6 +63,13 @@ impl FileEntry {
     }
 
     pub fn get_icon_color(&self, config: &IconColorConfig) -> Color {
+        if let Some(link) = &self.symlink {
+            return crate::config::parse_color(if link.is_broken {
+                &config.broken_symlink
+            } else {
+                &config.symlink
+            });
+        }
         if self.is_hidden {
             return config.get_hidden_color();
         }
@@ -53,7 +78,9 @@ impl FileEntry {
     }
 
     pub fn get_file_type(&self) -> FileType {
-        if self.is_dir {
+        if self.symlink.is_some() {
+            FileType::Symlink
+        } else if self.is_dir {
             FileType::Directory
         } else if self.is_executable {
             FileType::Executable
@@ -62,11 +89,30 @@ impl FileEntry {
         }
     }
 
+    pub fn display_name(&self) -> Cow<'_, str> {
+        let name = self.path.to_string_lossy();
+        match &self.symlink {
+            Some(link) => format!(
+                "{name} -> {}{}",
+                link.target.display(),
+                if link.is_broken { " [broken]" } else { "" }
+            )
+            .into(),
+            None => name,
+        }
+    }
+
     pub fn format_permissions(&self) -> String {
         let mode = self.mode;
 
         // File type
-        let file_type = if self.is_dir { 'd' } else { '-' };
+        let file_type = if self.symlink.is_some() {
+            'l'
+        } else if self.is_dir {
+            'd'
+        } else {
+            '-'
+        };
 
         // Owner permissions
         let user_r = if mode & 0o400 != 0 { 'r' } else { '-' };
@@ -138,5 +184,6 @@ pub struct DateTimePart {
 pub enum FileType {
     Directory,
     Executable,
+    Symlink,
     RegularFile,
 }

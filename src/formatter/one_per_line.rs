@@ -26,7 +26,7 @@ pub fn format_plain(
     zero: bool,
 ) -> io::Result<()> {
     sort_entries(&mut entries, sort);
-    let is_directory = target.is_dir();
+    let is_directory = target.is_dir() && !target.is_symlink();
     let separator = if zero { b"\0" } else { b"\n" };
     let mut stdout = BufWriter::new(io::stdout().lock());
     for entry in entries {

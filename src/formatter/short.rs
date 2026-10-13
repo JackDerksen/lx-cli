@@ -46,7 +46,7 @@ fn format_short_with_max_rows(
         match entry.get_file_type() {
             FileType::Directory => directories.push(entry),
             FileType::Executable => executables.push(entry),
-            FileType::RegularFile => regular_files.push(entry),
+            FileType::RegularFile | FileType::Symlink => regular_files.push(entry),
         }
     }
 

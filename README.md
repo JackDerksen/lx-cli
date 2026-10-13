@@ -210,7 +210,11 @@ Directories summarise changes anywhere beneath them, including deleted files. An
 
 Git status is opt-in and uses one Git status query for the repository containing the target, including linked worktrees. It requires the `git` executable. Outside a repository, `--git` leaves the listing unchanged; if Git fails, lx reports a warning and prints the normal listing. Submodules receive the containing repository's summary rather than a separate status scan of their contents. Untracked files are enumerated to distinguish them from ignored files, which can add latency in large repositories.
 
+Symlinks display as `name -> target` in human-readable listings, using the target exactly as stored in the link. Missing targets and link loops add a `[broken]` marker. Long listings show the link's own metadata, with `l` as the permissions prefix. Directory links are displayed as links and are never followed by tree traversal, including when supplied as the listing target; append `/` or pass a path inside the linked directory to list its contents. Sorting, filtering, and Git badges refer to the link itself. Links count as files for `-f` and are excluded by `-d`.
+
 ## Configuration
+
+Link text defaults to cyan, or bright red for broken links, and uses a link icon. Customise `symlink` and `broken_symlink` under `[colors]` and `[icons.colors]`, and `symlink` under `[icons]` (set it to `""` to hide the icon). Link styling takes precedence over hidden-file styling. Target permission errors are not marked as broken because the target's existence cannot be determined. Plain, piped-default, and NUL output emit only link filenames, including broken links, with no target annotation.
 
 `lx` can be customized using a configuration file at `~/.config/lx/config`.
 

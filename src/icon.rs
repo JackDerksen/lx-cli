@@ -6,6 +6,7 @@ use colored::Color;
 pub enum FileIcon {
     Directory,
     Executable,
+    Symlink,
     RegularFile,
 }
 
@@ -14,6 +15,7 @@ impl FileIcon {
         match self {
             FileIcon::Directory => config.get_directory_icon(),
             FileIcon::Executable => config.get_executable_icon(),
+            FileIcon::Symlink => config.symlink.clone(),
             FileIcon::RegularFile => config.get_regular_icon(),
         }
     }
@@ -22,6 +24,7 @@ impl FileIcon {
         match self {
             FileIcon::Directory => config.get_directory_color(),
             FileIcon::Executable => config.get_executable_color(),
+            FileIcon::Symlink => crate::config::parse_color(&config.symlink),
             FileIcon::RegularFile => config.get_regular_color(),
         }
     }
@@ -30,6 +33,7 @@ impl FileIcon {
         match self {
             FileIcon::Directory => config.get_directory_color(),
             FileIcon::Executable => config.get_executable_color(),
+            FileIcon::Symlink => crate::config::parse_color(&config.symlink),
             FileIcon::RegularFile => config.get_regular_color(),
         }
     }
