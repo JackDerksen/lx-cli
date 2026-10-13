@@ -1,6 +1,5 @@
 /// Handles sorting of file entries.
 use crate::file_entry::FileEntry;
-use crate::reader::DiscoveredEntry;
 use clap::ValueEnum;
 use serde::Deserialize;
 use std::cmp::Ordering;
@@ -56,10 +55,7 @@ pub enum DefaultSort {
 
 /// Applies a requested sort, or the standard directory/executable/file ordering.
 pub fn sort_entries(entries: &mut [FileEntry], options: SortOptions) {
-    match options.field {
-        Some(field) => sort_by_field(entries, field, options.order),
-        None => sort_default(entries),
-    }
+    sort_entries_with_default(entries, options, DefaultSort::TypeThenName);
 }
 
 /// Default sort: by file type (directory, executable, regular), then alphabetically by name.
@@ -72,29 +68,22 @@ pub fn sort_default(entries: &mut [FileEntry]) {
     });
 }
 
-pub fn sort_discovered_entries(
-    entries: &mut [DiscoveredEntry],
+pub fn sort_entries_with_default(
+    entries: &mut [FileEntry],
     options: SortOptions,
     default_sort: DefaultSort,
 ) {
     if let Some(field) = options.field {
-        entries.sort_by(|left, right| {
-            compare_entries(&left.entry, &right.entry, field, options.order)
-        });
+        sort_by_field(entries, field, options.order);
         return;
     }
 
     match default_sort {
         DefaultSort::Name => {
-            entries.sort_by_cached_key(|entry| entry.entry.path.to_string_lossy().to_lowercase());
+            entries.sort_by_cached_key(|entry| entry.path.to_string_lossy().to_lowercase());
         }
         DefaultSort::TypeThenName => {
-            entries.sort_by_cached_key(|entry| {
-                (
-                    entry.entry.get_file_type(),
-                    entry.entry.path.to_string_lossy().to_lowercase(),
-                )
-            });
+            sort_default(entries);
         }
     }
 }

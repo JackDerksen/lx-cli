@@ -4,18 +4,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MetadataMode {
     Basic,
     Full,
-}
-
-#[derive(Debug, Clone)]
-pub struct DiscoveredEntry {
-    pub entry: FileEntry,
-    pub full_path: PathBuf,
 }
 
 #[derive(Default)]
@@ -30,12 +24,7 @@ pub fn read_target(
     metadata_mode: MetadataMode,
 ) -> io::Result<Vec<FileEntry>> {
     if fs::symlink_metadata(target_path)?.is_dir() {
-        return Ok(
-            read_directory_entries(target_path, show_hidden, metadata_mode)?
-                .into_iter()
-                .map(|entry| entry.entry)
-                .collect(),
-        );
+        return read_directory_entries(target_path, show_hidden, metadata_mode);
     }
 
     let mut cache = UserGroupCache::default();
@@ -50,9 +39,10 @@ pub fn read_directory_entries(
     target_path: &Path,
     show_hidden: bool,
     metadata_mode: MetadataMode,
-) -> io::Result<Vec<DiscoveredEntry>> {
+) -> io::Result<Vec<FileEntry>> {
     let mut entries = Vec::new();
     let mut cache = UserGroupCache::default();
+    let target_path = std::path::absolute(target_path)?;
 
     for entry in fs::read_dir(target_path)? {
         let entry = entry?;
@@ -66,7 +56,7 @@ pub fn read_directory_entries(
         let metadata = entry.metadata()?;
         let entry = build_file_entry(file_name, &full_path, &metadata, metadata_mode, &mut cache)?;
 
-        entries.push(DiscoveredEntry { entry, full_path });
+        entries.push(entry);
     }
 
     Ok(entries)
@@ -82,13 +72,14 @@ fn read_file_entry(
     metadata_mode: MetadataMode,
     cache: &mut UserGroupCache,
 ) -> io::Result<FileEntry> {
-    let metadata = fs::symlink_metadata(target_path)?;
+    let full_path = std::path::absolute(target_path)?;
+    let metadata = fs::symlink_metadata(&full_path)?;
     let file_name = target_path
         .file_name()
         .unwrap_or(target_path.as_os_str())
         .to_os_string();
 
-    build_file_entry(file_name, target_path, &metadata, metadata_mode, cache)
+    build_file_entry(file_name, &full_path, &metadata, metadata_mode, cache)
 }
 
 fn build_file_entry(
@@ -124,6 +115,8 @@ fn build_file_entry(
     Ok(FileEntry {
         is_hidden: is_hidden(&path),
         path,
+        full_path: full_path.to_path_buf(),
+        filesystem_identity: (metadata.dev(), metadata.ino()),
         is_dir,
         is_executable: metadata.is_file() && (mode & 0o111) != 0,
         mode,

@@ -1,8 +1,9 @@
 use crate::sort::{SortField, SortOptions, SortOrder};
 use colored::{Color, ColoredString, Colorize};
-use serde::Deserialize;
-use std::collections::HashMap;
+use serde::{Deserialize, Deserializer};
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
+use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -113,15 +114,65 @@ impl Default for GitColorConfig {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct IconConfig {
     #[serde(default)]
-    pub directory: String,
+    pub enabled: bool,
     #[serde(default)]
-    pub executable: String,
+    pub directory: Option<String>,
     #[serde(default)]
-    pub regular: String,
+    pub executable: Option<String>,
     #[serde(default)]
-    pub symlink: String,
+    pub regular: Option<String>,
+    #[serde(default)]
+    pub symlink: Option<String>,
+    /// Icons by filesystem identity, resolved from path keys when reading configuration.
+    #[serde(default, deserialize_with = "deserialize_path_icons")]
+    pub paths: HashMap<(u64, u64), String>,
+    #[serde(default)]
+    pub patterns: Vec<IconPattern>,
     #[serde(default)]
     pub colors: IconColorConfig,
+}
+
+/// An ordered icon rule matching an entry's name or absolute path.
+#[derive(Debug, Deserialize, Clone)]
+pub struct IconPattern {
+    pub pattern: String,
+    pub icon: String,
+    #[serde(default)]
+    pub kind: IconPatternKind,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum IconPatternKind {
+    #[default]
+    Any,
+    File,
+    Directory,
+}
+
+fn deserialize_path_icons<'de, DeserializerType>(
+    deserializer: DeserializerType,
+) -> Result<HashMap<(u64, u64), String>, DeserializerType::Error>
+where
+    DeserializerType: Deserializer<'de>,
+{
+    let paths = BTreeMap::<String, String>::deserialize(deserializer)?;
+    Ok(paths
+        .into_iter()
+        .filter_map(|(path, icon)| {
+            if path.is_empty() {
+                return None;
+            }
+            let path = PathBuf::from(path);
+            let path = if path.is_absolute() {
+                path
+            } else {
+                dirs::home_dir()?.join(path.strip_prefix("~").unwrap_or(&path))
+            };
+            let metadata = fs::symlink_metadata(path).ok()?;
+            Some(((metadata.dev(), metadata.ino()), icon))
+        })
+        .collect())
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -349,19 +400,45 @@ impl IconColorConfig {
 
 impl IconConfig {
     pub fn get_directory_icon(&self) -> String {
-        self.directory.clone()
+        crate::icon::FileIcon::Directory.as_str_custom(self)
     }
 
     pub fn get_executable_icon(&self) -> String {
-        self.executable.clone()
+        crate::icon::FileIcon::Executable.as_str_custom(self)
     }
 
     pub fn get_regular_icon(&self) -> String {
-        self.regular.clone()
+        crate::icon::FileIcon::RegularFile.as_str_custom(self)
+    }
+
+    pub fn get_symlink_icon(&self) -> String {
+        crate::icon::FileIcon::Symlink.as_str_custom(self)
+    }
+
+    /// Whether any file type has a visible icon after applying overrides.
+    pub fn has_icons(&self) -> bool {
+        [
+            self.get_directory_icon(),
+            self.get_executable_icon(),
+            self.get_regular_icon(),
+            self.get_symlink_icon(),
+        ]
+        .iter()
+        .any(|icon| !icon.is_empty())
+            || self.paths.values().any(|icon| !icon.is_empty())
+            || self.patterns.iter().any(|rule| !rule.icon.is_empty())
     }
 }
 
 impl DisplayConfig {
+    pub(crate) fn long_format_fields(&self) -> Vec<String> {
+        self.long_format_fields
+            .iter()
+            .filter(|field| field.as_str() != "icon")
+            .cloned()
+            .collect()
+    }
+
     pub fn get_long_format_title_color(&self) -> Color {
         parse_color(&self.long_format_title_color)
     }

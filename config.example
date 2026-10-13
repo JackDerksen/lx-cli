@@ -46,9 +46,22 @@ broken_symlink = []
 # hidden = ["dimmed", "italic"]
 
 [icons]
-# Custom icons for different file types
-# Icons are disabled by default. Enable them with Nerd Font glyphs,
-# any Unicode characters, or simple ASCII.
+# Enable automatic Nerd Font icons (default: false).
+# System folders get dedicated icons; other directories use a generic folder.
+# Includes ~/.config, ~/.cache, ~/.local, ~/.Trash, and ~/.ssh (shown with -a).
+# Common development folders such as .git, src, target, tests, and docs also
+# have dedicated icons wherever they appear.
+# Licence files (LICENSE, LICENCE, COPYING, COPYRIGHT and suffixed variants)
+# use the \uE60A icon; custom global, path, and pattern icons take precedence.
+# README files use the book icon (\uF02D), including extensions such as .md.
+# Common source languages, configuration, documents, media, archives, databases,
+# and fonts get file icons by name or extension. Key manifests, lockfiles,
+# Makefiles, Dockerfiles, .env variants, and Git settings are recognised too.
+# In long output, icons appear beside filenames within the Name column.
+enabled = false
+# Optional global overrides for each file type. A directory override replaces
+# all automatic system-folder icons. An empty string hides that type's icons.
+# Explicit overrides also work when automatic icons are disabled.
 
 # Examples:
 # Nerd Font:
@@ -67,10 +80,40 @@ broken_symlink = []
 # executable = "*"
 # regular = "-"
 
-directory = ""
-executable = ""
-regular = ""
-symlink = ""
+# directory = "" # Hide all directory icons, including system folders
+
+[icons.paths]
+# Override individual directories, files, or symlinks. Global file-type icons
+# above take precedence, including empty strings. Path overrides work even
+# when automatic icons are disabled, and do not apply to child entries.
+# Paths may be absolute, start with ~/, or be relative to your home directory.
+# Missing or inaccessible paths are ignored. Use "" to hide an entry's icon.
+# "~/Documents" = "📚"
+# "~/.config" = "⚙️"
+# "~/.Trash" = "🗑️"
+# "projects" = "💻"
+# "/srv/archive" = ""
+
+# Ordered name/path rules; first match wins. Exact paths and global file-type
+# settings take precedence. Rules also work with automatic icons disabled.
+# Supports * and ?. Patterns containing / match absolute listing paths;
+# other patterns match names. * can cross path separators. A trailing /
+# restricts a rule to directories and is removed before matching.
+# Optional kind: any (default), file (including symlinks), or directory.
+# An empty icon hides matching icons.
+# [[icons.patterns]]
+# pattern = "*.rs"
+# kind = "file"
+# icon = "🦀"
+#
+# [[icons.patterns]]
+# pattern = "*.md"
+# kind = "file"
+# icon = "📝"
+#
+# [[icons.patterns]]
+# pattern = "*/projectName/notes/"
+# icon = "📓"
 
 [icons.colors]
 # Custom colours for icons (separate from filename colours)
@@ -107,8 +150,7 @@ datetime_format = "%-d %b %H:%M"
 
 # Long format field ordering and visibility (used with -l flag)
 # Specify which fields to display and in what order. Available fields:
-# - filename: The name of the file
-# - icon: The file icon
+# - filename: The name of the file, including its icon when enabled
 # - permissions: File permissions (e.g., drwxr-xr-x)
 # - git: Git status (populated with --git; automatically added when omitted)
 # - nlink: Number of hard links

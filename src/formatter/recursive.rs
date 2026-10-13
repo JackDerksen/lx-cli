@@ -55,15 +55,7 @@ pub fn format_recursive(
         return Ok(());
     }
 
-    let uses_icons = !options.use_long_format
-        && [
-            config.icons.directory.as_str(),
-            config.icons.executable.as_str(),
-            config.icons.regular.as_str(),
-            config.icons.symlink.as_str(),
-        ]
-        .iter()
-        .any(|icon| !icon.is_empty());
+    let uses_icons = !options.use_long_format && config.icons.has_icons();
     let default_sort = if options.use_long_format {
         DefaultSort::TypeThenName
     } else {
@@ -109,18 +101,18 @@ fn print_nested_long_tree(
             .map(|tree_entry| format!("{} ", tree_entry.branch)),
     );
 
-    let fields = &config.display.long_format_fields;
+    let fields = config.display.long_format_fields();
     let widths = calculate_column_widths_with_filename_prefixes(
         &display_entries,
         &filename_prefixes,
-        fields,
+        &fields,
         config,
     );
     print_long_entries_with_filename_prefixes(
         &display_entries,
         &filename_prefixes,
         config,
-        fields,
+        &fields,
         &widths,
     )
 }

@@ -3,7 +3,7 @@ use crate::filter::EntryFilter;
 use crate::formatter::TreeOptions;
 use crate::git::GitRepository;
 use crate::reader::{MetadataMode, read_directory_entries};
-use crate::sort::{DefaultSort, SortOptions, sort_discovered_entries};
+use crate::sort::{DefaultSort, SortOptions, sort_entries_with_default};
 use std::io;
 use std::path::Path;
 
@@ -79,31 +79,31 @@ impl<'a> TreeRenderer<'a> {
         }
         let mut entries = read_directory_entries(path, self.options.show_hidden, metadata_mode)?;
         entries.retain(|entry| {
-            self.filter.includes(&entry.entry)
+            self.filter.includes(entry)
                 && !self
                     .options
                     .ignored
                     .is_some_and(|repository| repository.is_ignored(&entry.full_path))
         });
         if let Some(repository) = self.git {
-            for discovered in &mut entries {
-                discovered.entry.git_status = Some(repository.status(&discovered.full_path));
+            for entry in &mut entries {
+                entry.git_status = Some(repository.status(&entry.full_path));
             }
         }
-        sort_discovered_entries(&mut entries, self.sort, self.default_sort);
+        sort_entries_with_default(&mut entries, self.sort, self.default_sort);
 
-        for (index, discovered_entry) in entries.iter().enumerate() {
+        for (index, entry) in entries.iter().enumerate() {
             let is_last = index == entries.len() - 1;
             let (connector, child_prefix) = self.branch(prefix, is_last);
 
             tree_entries.push(TreeEntry {
-                entry: discovered_entry.entry.clone(),
+                entry: entry.clone(),
                 branch: format!("{prefix}{connector}"),
             });
 
-            if discovered_entry.entry.is_dir {
+            if entry.is_dir {
                 self.collect_directory(
-                    &discovered_entry.full_path,
+                    &entry.full_path,
                     metadata_mode,
                     &child_prefix,
                     remaining_depth.map(|depth| depth - 1),

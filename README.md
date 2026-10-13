@@ -229,11 +229,67 @@ The configuration file supports the following sections:
 - **`[colors]`**: Customise text colours for different file types, including hidden files
 - **`[colors.git]`**: Customise Git badge colours for each status
 - **`[styles]`**: Combine font styles for filenames by file type
-- **`[icons]`**: Set custom icons for different file types
+- **`[icons]`**: Enable automatic icons or set global icons for different file types
+- **`[icons.paths]`**: Override icons for individual directories, files, or symlinks
+- **`[[icons.patterns]]`**: Set ordered icon rules for names or paths
 - **`[icons.colors]`**: Customise colours for icons separately from filenames, including hidden file icons
 - **`[display]`**: Control layout options, column wrapping, and default sorting
 - **`[display.long_format_styles]`**: Set font styles for individual long-format columns
 - **`[display.tree]`**: Control tree display style for recursive listings (`style = "ascii"` or `style = "indent"`)
+
+Enable automatic [Nerd Font icons](https://www.nerdfonts.com/cheat-sheet) with:
+
+```toml
+[icons]
+enabled = true
+```
+
+System folders get dedicated icons for Home, Desktop, Documents, Downloads, Music, Pictures, Movies/Videos, etc. where those folders are available. macOS also recognises Applications and Library; Linux recognises `/etc`, `/usr`, `/var`, `/tmp`, and `/home`. Linux user folders follow XDG settings, including renamed or relocated folders. Recognition uses the actual directory, so an unrelated folder named `Documents` keeps the generic folder icon. Symlinks retain their link icon.
+
+Standard hidden folders in your home directory also get dedicated icons: `.config`, `.cache`, `.local`, `.Trash`, and `.ssh`. Linux additionally recognises the XDG data, state, executable, and trash directories, including relocated paths. Use `-a` to include hidden entries in listings. Both automatic and custom icons keep the hidden icon colour from `[icons.colors]`.
+
+Common development folders get icons by name wherever they appear: `.git`, `.github`, `src`, `source`, `sources`, `lib`, `test`, `tests`, `target`, `build`, `docs`, `assets`, `images`, `vendor`, `scripts`, `bin`, etc. These defaults apply to directories when automatic icons are enabled; files and symlinks keep their own icon selection.
+
+Licence files named `LICENSE`, `LICENCE`, `COPYING`, or `COPYRIGHT` use the `\uE60A` icon when automatic icons are enabled. README files use the book icon (`\uF02D`). Matching ignores case and accepts extensions or suffixes separated by `.`, `-`, or `_`, such as `LICENSE.md`, `LICENSE-MIT`, and `README.md`. Custom global, path, and pattern icons still take precedence; symlinks keep their link icon.
+
+Automatic file icons also recognise common source languages (including Rust, Python, JavaScript, TypeScript, React, Go, C/C++, Java, Ruby, PHP, Lua, Swift, Kotlin, and shell scripts), web styles, configuration formats, Markdown, text, PDF and office documents, images, audio/video, archives, databases, and fonts. Key filenames such as `Cargo.toml`, `package.json`, `pyproject.toml`, Makefiles, Dockerfiles, Compose files, `.env` variants, Git settings, shell startup files, and common dependency lockfiles get dedicated icons. `CHANGELOG`, `CONTRIBUTING`, and `AUTHORS` share the book icon. Filename-specific choices take precedence over extension icons; unknown files retain the generic file or executable icon. Recognition uses filenames only and does not read file contents.
+
+Automatic icons work in short, compact, long, and recursive listings. In long output, icons sit immediately beside filenames within the `Name` column. Older `icon` entries in `long_format_fields` are ignored. Plain and NUL output remain undecorated.
+
+Any explicit file-type icon overrides the automatic choice globally. For example, `directory = "📁"` replaces every directory icon, including system folders, and `directory = ""` hides them all. Omit a setting to use its automatic default. Existing custom icons still work without `enabled = true`; `enabled` controls the automatic defaults. Icon colours remain configurable under `[icons.colors]`.
+
+Override individual paths under `[icons.paths]`:
+
+```toml
+[icons.paths]
+"~/Documents" = "📚"
+"~/.config" = "⚙️"
+"~/.Trash" = "🗑️"
+"projects" = "💻"
+"/srv/archive" = ""
+```
+
+Global file-type settings take precedence over exact path overrides, followed by pattern rules, system-folder icons, common directory names, and generic icons. In particular, a global `directory` setting still replaces every directory icon, including those in `[icons.paths]`. Path overrides also work when automatic icons are disabled. Paths can be absolute, use `~/`, or be relative to your home directory. Each setting applies to the configured filesystem entry, including when listed using a different path to the same entry; it does not extend to children. Symlink settings affect the link itself. An empty icon hides that entry's icon. Missing or inaccessible paths are ignored when configuration is loaded.
+
+Pattern rules are tried in configuration order; the first matching rule wins, including a rule with an empty icon:
+
+```toml
+[[icons.patterns]]
+pattern = "*.rs"
+kind = "file"
+icon = "🦀"
+
+[[icons.patterns]]
+pattern = "*.md"
+kind = "file"
+icon = "📝"
+
+[[icons.patterns]]
+pattern = "*/projectName/notes/"
+icon = "📓"
+```
+
+Patterns support `*` for any number of characters and `?` for one character, with case-sensitive matching. A pattern without a path separator matches the entry's name; a pattern containing `/` matches its absolute listing path. `*` can cross path separators. A trailing `/` restricts the rule to directories and is removed before matching, so `src/` matches directories named `src` at any depth. Rules can also set `kind` to `file`, `directory`, or `any` (the default). `file` includes symlinks, consistent with `-f`; patterns match a link's name or path rather than its target. Pattern rules work with automatic icons disabled and keep icons inline with filenames, including tree output.
 
 Set `datetime_format` under `[display]` to change the long-format `modified` column. It uses Chrono’s strftime-style specifiers, so `%B %-d, %Y` renders a full month name (for example, `August 8, 2026`) and `%-I:%M %p` uses a 12-hour clock. Numeric and text directives are padded independently across the listing, keeping each date/time component aligned.
 

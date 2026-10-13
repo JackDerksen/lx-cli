@@ -22,19 +22,13 @@ fn format_filename(
     styles: Option<&[FontStyle]>,
 ) -> String {
     let filename = entry.display_name().color(entry.get_color(&config.colors));
-    let mut output = apply_font_styles(
+    let filename = apply_font_styles(
         filename,
         styles.unwrap_or_else(|| entry.font_styles(&config.styles)),
     )
     .to_string();
-    output.extend(std::iter::repeat_n(' ', padding));
-    output
-}
-
-fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
-    let filename = format_filename(entry, config, 0, None);
     let icon = entry.get_icon_custom(&config.icons);
-    let output = if icon.is_empty() {
+    let mut output = if icon.is_empty() {
         filename
     } else {
         format!(
@@ -42,6 +36,12 @@ fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
             icon.color(entry.get_icon_color(&config.icons.colors))
         )
     };
+    output.extend(std::iter::repeat_n(' ', padding));
+    output
+}
+
+fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
+    let output = format_filename(entry, config, 0, None);
     match entry.git_status {
         Some(status) => format!("{} {output}", status.format(1, &config.colors.git)),
         None => output,
@@ -49,11 +49,14 @@ fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
 }
 
 fn entry_width(entry: &FileEntry, config: &Config) -> usize {
+    filename_width(entry, config) + if entry.git_status.is_some() { 2 } else { 0 }
+}
+
+fn filename_width(entry: &FileEntry, config: &Config) -> usize {
     let icon = entry.get_icon_custom(&config.icons);
     UnicodeWidthStr::width(entry.display_name().as_ref())
         + UnicodeWidthStr::width(icon.as_str())
         + usize::from(!icon.is_empty())
-        + if entry.git_status.is_some() { 2 } else { 0 }
 }
 
 fn print_line(arguments: std::fmt::Arguments<'_>) -> io::Result<()> {

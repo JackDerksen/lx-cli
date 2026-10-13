@@ -1,6 +1,6 @@
 use crate::config::{Config, apply_font_styles};
 use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry};
-use crate::formatter::{format_filename, print_line};
+use crate::formatter::{filename_width, format_filename, print_line};
 use crate::sort::{SortOptions, sort_entries};
 use colored::Colorize;
 use std::io;
@@ -21,9 +21,9 @@ pub fn print_long_entries(entries: &[FileEntry], config: &Config, prefix: &str) 
         return Ok(());
     }
 
-    let fields = &config.display.long_format_fields;
-    let widths = calculate_column_widths(entries, fields, config);
-    print_long_entries_with_widths(entries, config, prefix, fields, &widths)
+    let fields = config.display.long_format_fields();
+    let widths = calculate_column_widths(entries, &fields, config);
+    print_long_entries_with_widths(entries, config, prefix, &fields, &widths)
 }
 
 pub fn calculate_column_widths(
@@ -54,14 +54,9 @@ pub fn calculate_column_widths(
                 .map(|value| UnicodeWidthStr::width(value.as_str()))
                 .max()
                 .unwrap_or(0),
-            "icon" => entries
-                .iter()
-                .map(|e| UnicodeWidthStr::width(e.get_icon_custom(&config.icons).as_str()))
-                .max()
-                .unwrap_or(0),
             "filename" => entries
                 .iter()
-                .map(|entry| UnicodeWidthStr::width(entry.display_name().as_ref()))
+                .map(|entry| filename_width(entry, config))
                 .max()
                 .unwrap_or(0),
             "permissions" => entries
@@ -188,19 +183,7 @@ fn print_long_entries_with_optional_filename_prefixes(
                         modified.to_string()
                     }
                 }
-                "icon" => {
-                    let icon = entry.get_icon_custom(&config.icons);
-                    let icon_color = entry.get_icon_color(&config.icons.colors);
-                    let width = widths.get("icon").copied().unwrap_or(0);
-                    let padded = if idx < fields.len() - 1 {
-                        pad_to_display_width(icon, width)
-                    } else {
-                        icon
-                    };
-                    format!("{}", padded.color(icon_color))
-                }
                 "filename" => {
-                    let filename_str = entry.display_name();
                     let width = widths.get("filename").copied().unwrap_or(0);
                     let filename_prefix = filename_prefixes
                         .and_then(|prefixes| prefixes.get(entry_index))
@@ -209,8 +192,7 @@ fn print_long_entries_with_optional_filename_prefixes(
 
                     let padding = if idx < fields.len() - 1 {
                         width.saturating_sub(
-                            UnicodeWidthStr::width(filename_prefix)
-                                + UnicodeWidthStr::width(filename_str.as_ref()),
+                            UnicodeWidthStr::width(filename_prefix) + filename_width(entry, config),
                         )
                     } else {
                         0
@@ -340,7 +322,6 @@ fn column_title(field: &str) -> &str {
         "group" => "Group",
         "size" => "Size",
         "modified" => "Modified",
-        "icon" => "Icon",
         "filename" => "Name",
         _ => field,
     }

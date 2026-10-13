@@ -38,7 +38,7 @@ impl EntryFilter {
     }
 }
 
-fn matches_pattern(pattern: &str, name: &str) -> bool {
+pub(crate) fn matches_pattern(pattern: &str, name: &str) -> bool {
     let pattern: Vec<char> = pattern.chars().collect();
     let name: Vec<char> = name.chars().collect();
     let (mut pattern_index, mut name_index) = (0, 0);
