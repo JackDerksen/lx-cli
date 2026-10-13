@@ -1,11 +1,11 @@
 # LX: A nicer way to list your files
 
-A modern alternative to `ls` with more readable formatting, colours, icons, and customizable output.
+A modern alternative to `ls` with more readable formatting, colours, optional icons, and customisable output.
 
 ## Features
 
 - **Crazy fast**: just as fast (if not faster) compared to the stock `ls` command
-- **Colorized output** with file type icons
+- **Colourized output** with optional file type icons
 - **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), compact (`-c`), and recursive tree view (`-r`)
 - **Configurable**: customise colours, font styles, hidden-file styling, spacing, display options, and tree styles
 - **Smart alignment**: properly handles unicode characters and icons
@@ -21,7 +21,7 @@ Basic formatting difference compared to the standard `ls` command
 ---
 <img width="3024" height="1900" alt="CleanShot 2026-08-08 at 18 33 05@2x" src="https://github.com/user-attachments/assets/17bf867c-faf7-483b-a7c7-906bd9d5a549" />
 
-Nicer long format compared to the standard `ls` command (displayed fields can be customized)
+Nicer long format compared to the standard `ls` command (displayed fields can be customised)
 
 ---
 <img width="3024" height="1900" alt="CleanShot 2026-08-08 at 18 33 52@2x" src="https://github.com/user-attachments/assets/d53796f7-461a-4e97-b5e9-766a033584bb" />
@@ -42,7 +42,7 @@ The `-r` flag can be combined with the '-l' long flag for viewing subdirectory i
 ## Requirements
 
 - Rust 1.85 or newer and Cargo
-- Either a [nerd font](https://www.nerdfonts.com/font-downloads) or a terminal like Ghostty which has nerd font icons pre-installed.
+- A [Nerd Font](https://www.nerdfonts.com/font-downloads) is optional if you enable Nerd Font icons; icons are disabled by default. Note that some terminals, such as Ghostty, already have icons built-in!
 
 ## Installation
 
@@ -118,7 +118,7 @@ lx --plain
 # Use NUL separators to preserve filenames containing newlines
 lx --zero | xargs -0 -I {} printf '%s\n' '{}'
 
-# Use compact columns, wrapping after five rows by default
+# Use compact columns, wrapping after ten rows by default
 lx -c
 
 # Show directory tree recursively
@@ -214,9 +214,11 @@ Symlinks display as `name -> target` in human-readable listings, using the targe
 
 ## Configuration
 
-Link text defaults to cyan, or bright red for broken links, and uses a link icon. Customise `symlink` and `broken_symlink` under `[colors]` and `[icons.colors]`, and `symlink` under `[icons]` (set it to `""` to hide the icon). Link styling takes precedence over hidden-file styling. Target permission errors are not marked as broken because the target's existence cannot be determined. Plain, piped-default, and NUL output emit only link filenames, including broken links, with no target annotation.
+The default layout keeps icons off and uses underlined titles in long output. Columns appear as Permissions, Size, Owner, Modified, and Name; `--git` adds Git immediately before Name. Dates use `%-d %b %H:%M` (for example, `13 Oct 15:14`), and compact output wraps after ten rows. Existing configuration settings override these defaults.
 
-`lx` can be customized using a configuration file at `~/.config/lx/config`.
+Link text defaults to cyan, or bright red for broken links. Customise `symlink` and `broken_symlink` under `[colors]` and `[icons.colors]`, and set `symlink` under `[icons]` to enable a link icon. Link styling takes precedence over hidden-file styling. Target permission errors are not marked as broken because the target's existence cannot be determined. Plain, piped-default, and NUL output emit only link filenames, including broken links, with no target annotation.
+
+`lx` can be customised using a configuration file at `~/.config/lx/config`.
 
 See [`config.example`](config.example) for all available options and detailed configuration examples.
 
@@ -237,7 +239,7 @@ Set `datetime_format` under `[display]` to change the long-format `modified` col
 
 Font styles support `bold`, `dimmed`, `italic`, `underline`, `strikethrough`, and `reversed`. Combine them in an array, or use `[]` to remove font attributes. Existing colour settings continue to work independently. Directories and executables stay bold by default; hidden entries inherit their file type's styles unless `hidden` is set. Symlink and broken-symlink styles take precedence over hidden styles.
 
-Long-format titles are underlined by default when enabled. Only the header text is underlined, leaving spacing between columns clear. For example:
+Long-format titles are enabled and underlined by default. Only the header text is underlined, leaving spacing between columns clear. For example:
 
 ```toml
 [styles]
@@ -256,4 +258,4 @@ modified = ["dimmed"]
 
 Column styles use the same field names as `long_format_fields` and apply to both `-l` and `-lr`. A `filename` column style replaces the file type's font attributes in long output. Set `long_format_title_style = []` to remove header underlining. Font styles follow the existing colour controls, including `NO_COLOR`, and plain or NUL output always remains undecorated. Individual attributes depend on terminal support.
 
-For a complete list of available colors, icons, and configuration options, please refer to [`config.example`](config.example).
+For a complete list of available colours, icons, and configuration options, please refer to [`config.example`](config.example).

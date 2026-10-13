@@ -2,21 +2,21 @@
 # Place this file at: ~/.config/lx/config
 
 [colors]
-# Available colors:
+# Available colours:
 # black, red, green, yellow, blue, magenta, cyan, white
 # bright_black, bright_red, bright_green, bright_yellow
 # bright_blue, bright_magenta, bright_cyan, bright_white
 
-# Color for directories
+# Colour for directories
 directory = "blue"
 
-# Color for executable files
+# Colour for executable files
 executable = "red"
 
-# Color for regular files
+# Colour for regular files
 regular = "white"
 
-# Color for hidden files and directories
+# Colour for hidden files and directories
 hidden = "bright_black"
 
 # Symlink names and targets (broken links also show a [broken] marker)
@@ -47,14 +47,15 @@ broken_symlink = []
 
 [icons]
 # Custom icons for different file types
-# By default, lx uses nerd font icons. If you don't have a nerd font installed,
-# you can set custom icons here using any unicode characters or simple ASCII.
+# Icons are disabled by default. Enable them with Nerd Font glyphs,
+# any Unicode characters, or simple ASCII.
 
 # Examples:
-# Nerd font (default):
+# Nerd Font:
 # directory = ""
 # executable = ""
 # regular = ""
+# symlink = ""
 
 # Emoji icons:
 # directory = "📁"
@@ -66,17 +67,17 @@ broken_symlink = []
 # executable = "*"
 # regular = "-"
 
-directory = ""
-executable = ""
-regular = ""
-symlink = ""
+directory = ""
+executable = ""
+regular = ""
+symlink = ""
 
 [icons.colors]
-# Custom colors for icons (separate from filename colors)
-# Uses the same color names as [colors] section
-# By default, icon colors match the filename colors for each file type
+# Custom colours for icons (separate from filename colours)
+# Uses the same colour names as [colors] section
+# By default, icon colours match the filename colours for each file type
 directory = "blue"
-executable = "green"
+executable = "red"
 regular = "white"
 hidden = "bright_black"
 symlink = "cyan"
@@ -90,8 +91,8 @@ column_spacing = 2
 # Only applies to short format (not -l). Set to 0 for no limit (default: 0)
 max_rows = 0
 
-# Maximum number of rows used by compact format (-c) (default: 5)
-compact_max_rows = 5
+# Maximum number of rows used by compact format (-c) (default: 10)
+compact_max_rows = 10
 
 # Default sorting. Leave sort_field unset to preserve lx's built-in ordering.
 # Available fields: name, size, modified, type, permissions, links, owner, group
@@ -101,7 +102,7 @@ compact_max_rows = 5
 # Date and time format used by the modified long-format field. Supports Chrono
 # strftime specifiers, such as %B for a full month name, %b for an abbreviation,
 # %-d for an unpadded day, and %I:%M %p for a 12-hour time.
-datetime_format = "%Y-%m-%d %H:%M:%S"
+datetime_format = "%-d %b %H:%M"
 # Example: datetime_format = "%B %-d, %Y at %-I:%M %p"
 
 # Long format field ordering and visibility (used with -l flag)
@@ -117,22 +118,20 @@ datetime_format = "%Y-%m-%d %H:%M:%S"
 # - modified: Last modified date and time
 #
 # Default order (keeps tree names at the right edge in recursive long output):
-# [permissions, nlink, owner, group, size, modified, icon, filename]
+# [permissions, size, owner, modified, git, filename]
 #
-# To customize, list the fields you want in your desired order:
+# To customise, list the fields you want in your desired order:
 long_format_fields = [
     "permissions",
-    "nlink",
-    "owner",
-    "group",
     "size",
+    "owner",
     "modified",
-    "icon",
+    "git",
     "filename",
 ]
 
-# Show column titles above long-format output (default: false)
-long_format_titles = false
+# Show column titles above long-format output (default: true)
+long_format_titles = true
 
 # Colour used for long-format column titles
 long_format_title_color = "bright_black"

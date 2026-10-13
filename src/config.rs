@@ -110,15 +110,15 @@ impl Default for GitColorConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct IconConfig {
-    #[serde(default = "default_directory_icon")]
+    #[serde(default)]
     pub directory: String,
-    #[serde(default = "default_executable_icon")]
+    #[serde(default)]
     pub executable: String,
-    #[serde(default = "default_regular_icon")]
+    #[serde(default)]
     pub regular: String,
-    #[serde(default = "default_symlink_icon")]
+    #[serde(default)]
     pub symlink: String,
     #[serde(default)]
     pub colors: IconColorConfig,
@@ -158,7 +158,7 @@ pub struct DisplayConfig {
     pub tree: TreeConfig,
     #[serde(default = "default_long_format_fields")]
     pub long_format_fields: Vec<String>,
-    #[serde(default)]
+    #[serde(default = "default_long_format_titles")]
     pub long_format_titles: bool,
     #[serde(default = "default_long_format_title_color")]
     pub long_format_title_color: String,
@@ -178,18 +178,6 @@ impl Default for TreeConfig {
     fn default() -> Self {
         TreeConfig {
             style: default_tree_style(),
-        }
-    }
-}
-
-impl Default for IconConfig {
-    fn default() -> Self {
-        IconConfig {
-            directory: default_directory_icon(),
-            executable: default_executable_icon(),
-            regular: default_regular_icon(),
-            symlink: default_symlink_icon(),
-            colors: IconColorConfig::default(),
         }
     }
 }
@@ -232,7 +220,7 @@ impl Default for DisplayConfig {
             datetime_format: default_datetime_format(),
             tree: TreeConfig::default(),
             long_format_fields: default_long_format_fields(),
-            long_format_titles: false,
+            long_format_titles: default_long_format_titles(),
             long_format_title_color: default_long_format_title_color(),
             long_format_title_style: default_long_format_title_style(),
             long_format_styles: HashMap::new(),
@@ -264,10 +252,6 @@ fn default_broken_symlink_color() -> String {
     "bright_red".to_string()
 }
 
-fn default_symlink_icon() -> String {
-    "".to_string()
-}
-
 fn default_column_spacing() -> usize {
     2
 }
@@ -277,11 +261,11 @@ fn default_max_rows() -> usize {
 }
 
 fn default_compact_max_rows() -> usize {
-    5
+    10
 }
 
 fn default_datetime_format() -> String {
-    "%Y-%m-%d %H:%M:%S".to_string()
+    "%-d %b %H:%M".to_string()
 }
 
 fn default_tree_style() -> String {
@@ -291,14 +275,16 @@ fn default_tree_style() -> String {
 fn default_long_format_fields() -> Vec<String> {
     vec![
         "permissions".to_string(),
-        "nlink".to_string(),
-        "owner".to_string(),
-        "group".to_string(),
         "size".to_string(),
+        "owner".to_string(),
         "modified".to_string(),
-        "icon".to_string(),
+        "git".to_string(),
         "filename".to_string(),
     ]
+}
+
+fn default_long_format_titles() -> bool {
+    true
 }
 
 fn default_long_format_title_color() -> String {
@@ -307,18 +293,6 @@ fn default_long_format_title_color() -> String {
 
 fn default_long_format_title_style() -> Vec<FontStyle> {
     vec![FontStyle::Underline]
-}
-
-fn default_directory_icon() -> String {
-    "".to_string()
-}
-
-fn default_executable_icon() -> String {
-    "".to_string()
-}
-
-fn default_regular_icon() -> String {
-    "".to_string()
 }
 
 fn default_directory_icon_color() -> String {
