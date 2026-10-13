@@ -9,24 +9,30 @@ pub use one_per_line::{format_one_per_line, format_plain};
 pub use recursive::{TreeOptions, format_recursive};
 pub use short::{format_short, format_short_compact};
 
-use crate::config::Config;
-use crate::file_entry::{FileEntry, FileType};
+use crate::config::{Config, FontStyle, apply_font_styles};
+use crate::file_entry::FileEntry;
 use colored::Colorize;
 use std::io::{self, Write};
 use unicode_width::UnicodeWidthStr;
 
-fn format_filename(entry: &FileEntry, config: &Config, padding: usize) -> String {
-    let mut filename = entry.display_name().into_owned();
-    filename.extend(std::iter::repeat_n(' ', padding));
-    let filename = filename.color(entry.get_color(&config.colors));
-    match entry.get_file_type() {
-        FileType::Directory | FileType::Executable => filename.bold().to_string(),
-        FileType::RegularFile | FileType::Symlink => filename.to_string(),
-    }
+fn format_filename(
+    entry: &FileEntry,
+    config: &Config,
+    padding: usize,
+    styles: Option<&[FontStyle]>,
+) -> String {
+    let filename = entry.display_name().color(entry.get_color(&config.colors));
+    let mut output = apply_font_styles(
+        filename,
+        styles.unwrap_or_else(|| entry.font_styles(&config.styles)),
+    )
+    .to_string();
+    output.extend(std::iter::repeat_n(' ', padding));
+    output
 }
 
 fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
-    let filename = format_filename(entry, config, 0);
+    let filename = format_filename(entry, config, 0, None);
     let icon = entry.get_icon_custom(&config.icons);
     let output = if icon.is_empty() {
         filename

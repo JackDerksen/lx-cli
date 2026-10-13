@@ -1,6 +1,7 @@
 use crate::sort::{SortField, SortOptions, SortOrder};
-use colored::Color;
+use colored::{Color, ColoredString, Colorize};
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -9,9 +10,62 @@ pub struct Config {
     #[serde(default)]
     pub colors: ColorConfig,
     #[serde(default)]
+    pub styles: FontStyleConfig,
+    #[serde(default)]
     pub icons: IconConfig,
     #[serde(default)]
     pub display: DisplayConfig,
+}
+
+/// Terminal font attributes that can be combined with existing colours.
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum FontStyle {
+    Bold,
+    Dimmed,
+    Italic,
+    Underline,
+    Strikethrough,
+    Reversed,
+}
+
+pub(crate) fn apply_font_styles(mut text: ColoredString, styles: &[FontStyle]) -> ColoredString {
+    for style in styles {
+        text = match style {
+            FontStyle::Bold => text.bold(),
+            FontStyle::Dimmed => text.dimmed(),
+            FontStyle::Italic => text.italic(),
+            FontStyle::Underline => text.underline(),
+            FontStyle::Strikethrough => text.strikethrough(),
+            FontStyle::Reversed => text.reversed(),
+        };
+    }
+    text
+}
+
+/// Filename attributes; hidden entries inherit their file type unless overridden.
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+pub struct FontStyleConfig {
+    pub directory: Vec<FontStyle>,
+    pub executable: Vec<FontStyle>,
+    pub regular: Vec<FontStyle>,
+    pub hidden: Option<Vec<FontStyle>>,
+    pub symlink: Vec<FontStyle>,
+    pub broken_symlink: Vec<FontStyle>,
+}
+
+impl Default for FontStyleConfig {
+    fn default() -> Self {
+        Self {
+            directory: vec![FontStyle::Bold],
+            executable: vec![FontStyle::Bold],
+            regular: Vec::new(),
+            hidden: None,
+            symlink: Vec::new(),
+            broken_symlink: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -108,6 +162,10 @@ pub struct DisplayConfig {
     pub long_format_titles: bool,
     #[serde(default = "default_long_format_title_color")]
     pub long_format_title_color: String,
+    #[serde(default = "default_long_format_title_style")]
+    pub long_format_title_style: Vec<FontStyle>,
+    #[serde(default)]
+    pub long_format_styles: HashMap<String, Vec<FontStyle>>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -176,6 +234,8 @@ impl Default for DisplayConfig {
             long_format_fields: default_long_format_fields(),
             long_format_titles: false,
             long_format_title_color: default_long_format_title_color(),
+            long_format_title_style: default_long_format_title_style(),
+            long_format_styles: HashMap::new(),
         }
     }
 }
@@ -243,6 +303,10 @@ fn default_long_format_fields() -> Vec<String> {
 
 fn default_long_format_title_color() -> String {
     "bright_black".to_string()
+}
+
+fn default_long_format_title_style() -> Vec<FontStyle> {
+    vec![FontStyle::Underline]
 }
 
 fn default_directory_icon() -> String {

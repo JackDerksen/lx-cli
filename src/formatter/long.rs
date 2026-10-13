@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::{Config, apply_font_styles};
 use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry};
 use crate::formatter::{format_filename, print_line};
 use crate::sort::{SortOptions, sort_entries};
@@ -215,10 +215,34 @@ fn print_long_entries_with_optional_filename_prefixes(
                     } else {
                         0
                     };
-                    let filename_colored = format_filename(entry, config, padding);
+                    let filename_colored = format_filename(
+                        entry,
+                        config,
+                        padding,
+                        config
+                            .display
+                            .long_format_styles
+                            .get(field)
+                            .map(Vec::as_slice),
+                    );
                     format!("{filename_prefix}{filename_colored}")
                 }
                 _ => String::new(),
+            };
+            let part = if field != "filename" && !part.is_empty() {
+                match config.display.long_format_styles.get(field) {
+                    Some(styles) => {
+                        let content = part.trim_end_matches(' ');
+                        format!(
+                            "{}{}",
+                            apply_font_styles(content.into(), styles),
+                            &part[content.len()..]
+                        )
+                    }
+                    None => part,
+                }
+            } else {
+                part
             };
             output_parts.push(part);
         }
@@ -287,15 +311,19 @@ fn print_long_titles(
         .map(|(index, field)| {
             let title = column_title(field);
             let width = widths.get(field).copied().unwrap_or(0);
-            let padded = if index < fields.len() - 1 {
-                pad_to_display_width(title.to_string(), width)
+            let padding = if index < fields.len() - 1 {
+                width.saturating_sub(UnicodeWidthStr::width(title))
             } else {
-                title.to_string()
+                0
             };
 
             format!(
-                "{}",
-                padded.color(config.display.get_long_format_title_color())
+                "{}{}",
+                apply_font_styles(
+                    title.color(config.display.get_long_format_title_color()),
+                    &config.display.long_format_title_style,
+                ),
+                " ".repeat(padding)
             )
         })
         .collect();

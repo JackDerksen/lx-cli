@@ -32,6 +32,19 @@ untracked = "cyan"     # ?
 conflict = "red"       # !
 mixed = "yellow"       # *
 
+[styles]
+# Filename font styles, combined with the existing colours.
+# Available styles: bold, dimmed, italic, underline, strikethrough, reversed.
+# Combine styles in an array, or use [] for no font attributes.
+directory = ["bold"]
+executable = ["bold"]
+regular = []
+symlink = []
+broken_symlink = []
+# Hidden entries inherit their file type's styles unless overridden here.
+# Symlink styles take precedence over hidden styles.
+# hidden = ["dimmed", "italic"]
+
 [icons]
 # Custom icons for different file types
 # By default, lx uses nerd font icons. If you don't have a nerd font installed,
@@ -123,6 +136,17 @@ long_format_titles = false
 
 # Colour used for long-format column titles
 long_format_title_color = "bright_black"
+
+# Font styles for column titles (default: underline). Use [] to disable.
+long_format_title_style = ["underline"]
+
+[display.long_format_styles]
+# Optional font styles for individual long-format fields, using the field names
+# listed above. Colours remain controlled by the existing colour settings.
+# Filename styles replace [styles] in long output; other modes keep [styles].
+# owner = ["bold"]
+# modified = ["dimmed"]
+# filename = ["bold", "italic"]
 
 [display.tree]
 # Tree display style for recursive output (-r flag)

@@ -1,5 +1,5 @@
 /// Core data structures (FileEntry and FileType) that represent files and its metadata.
-use crate::config::{ColorConfig, IconColorConfig, IconConfig};
+use crate::config::{ColorConfig, FontStyle, FontStyleConfig, IconColorConfig, IconConfig};
 use crate::icon::FileIcon;
 use chrono::format::{Item, StrftimeItems};
 use colored::Color;
@@ -75,6 +75,26 @@ impl FileEntry {
         }
 
         self.get_file_icon().get_icon_color(config)
+    }
+
+    pub(crate) fn font_styles<'a>(&self, config: &'a FontStyleConfig) -> &'a [FontStyle] {
+        if let Some(link) = &self.symlink {
+            return if link.is_broken {
+                &config.broken_symlink
+            } else {
+                &config.symlink
+            };
+        }
+        if self.is_hidden {
+            if let Some(styles) = &config.hidden {
+                return styles;
+            }
+        }
+        match self.get_file_type() {
+            FileType::Directory => &config.directory,
+            FileType::Executable => &config.executable,
+            FileType::RegularFile | FileType::Symlink => &config.regular,
+        }
     }
 
     pub fn get_file_type(&self) -> FileType {

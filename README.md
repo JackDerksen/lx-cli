@@ -7,7 +7,7 @@ A modern alternative to `ls` with more readable formatting, colours, icons, and 
 - **Crazy fast**: just as fast (if not faster) compared to the stock `ls` command
 - **Colorized output** with file type icons
 - **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), compact (`-c`), and recursive tree view (`-r`)
-- **Configurable**: customise colours, hidden-file styling, spacing, display options, and tree styles
+- **Configurable**: customise colours, font styles, hidden-file styling, spacing, display options, and tree styles
 - **Smart alignment**: properly handles unicode characters and icons
 - **Git status**: optional single-character status badges, including summaries of changes beneath directories
 
@@ -226,11 +226,34 @@ The configuration file supports the following sections:
 
 - **`[colors]`**: Customise text colours for different file types, including hidden files
 - **`[colors.git]`**: Customise Git badge colours for each status
+- **`[styles]`**: Combine font styles for filenames by file type
 - **`[icons]`**: Set custom icons for different file types
 - **`[icons.colors]`**: Customise colours for icons separately from filenames, including hidden file icons
 - **`[display]`**: Control layout options, column wrapping, and default sorting
+- **`[display.long_format_styles]`**: Set font styles for individual long-format columns
 - **`[display.tree]`**: Control tree display style for recursive listings (`style = "ascii"` or `style = "indent"`)
 
 Set `datetime_format` under `[display]` to change the long-format `modified` column. It uses Chrono’s strftime-style specifiers, so `%B %-d, %Y` renders a full month name (for example, `August 8, 2026`) and `%-I:%M %p` uses a 12-hour clock. Numeric and text directives are padded independently across the listing, keeping each date/time component aligned.
+
+Font styles support `bold`, `dimmed`, `italic`, `underline`, `strikethrough`, and `reversed`. Combine them in an array, or use `[]` to remove font attributes. Existing colour settings continue to work independently. Directories and executables stay bold by default; hidden entries inherit their file type's styles unless `hidden` is set. Symlink and broken-symlink styles take precedence over hidden styles.
+
+Long-format titles are underlined by default when enabled. Only the header text is underlined, leaving spacing between columns clear. For example:
+
+```toml
+[styles]
+directory = ["bold"]
+regular = ["italic"]
+hidden = ["dimmed"]
+
+[display]
+long_format_titles = true
+long_format_title_style = ["bold", "underline"]
+
+[display.long_format_styles]
+owner = ["bold"]
+modified = ["dimmed"]
+```
+
+Column styles use the same field names as `long_format_fields` and apply to both `-l` and `-lr`. A `filename` column style replaces the file type's font attributes in long output. Set `long_format_title_style = []` to remove header underlining. Font styles follow the existing colour controls, including `NO_COLOR`, and plain or NUL output always remains undecorated. Individual attributes depend on terminal support.
 
 For a complete list of available colors, icons, and configuration options, please refer to [`config.example`](config.example).
