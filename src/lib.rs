@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod config;
+mod dir_scan;
 pub mod directory_size;
 pub mod file_entry;
 pub mod filter;

@@ -1,10 +1,10 @@
 /// Handles directory traversal and gathering file metadata.
+use crate::dir_scan::{Stat, scan};
 use crate::file_entry::{FileEntry, Symlink};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
-use std::os::unix::fs::MetadataExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static REPORTED_ERRORS: AtomicBool = AtomicBool::new(false);
@@ -59,38 +59,36 @@ pub fn read_directory_entries(
     let mut cache = UserGroupCache::default();
     let target_path = std::path::absolute(target_path)?;
 
-    for entry in fs::read_dir(&target_path)? {
-        let entry = match entry {
-            Ok(entry) => entry,
-            Err(error) => {
-                report_error(format_args!(
-                    "cannot read directory '{}': {error}",
-                    target_path.display()
-                ));
-                continue;
-            }
-        };
-        let file_name = entry.file_name();
-
-        if !show_hidden && is_hidden(&file_name) {
-            continue;
-        }
-
-        let full_path = entry.path();
-        let metadata = match entry.metadata() {
-            Ok(metadata) => metadata,
-            Err(error) => {
-                report_error(format_args!(
+    scan(
+        &target_path,
+        |name| show_hidden || !is_hidden(name),
+        |entry| {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(error) => {
+                    report_error(format_args!(
+                        "cannot read directory '{}': {error}",
+                        target_path.display()
+                    ));
+                    return;
+                }
+            };
+            let full_path = target_path.join(&entry.name);
+            match entry.stat {
+                Ok(stat) => entries.push(build_file_entry(
+                    entry.name,
+                    full_path,
+                    &stat,
+                    metadata_mode,
+                    &mut cache,
+                )),
+                Err(error) => report_error(format_args!(
                     "cannot access '{}': {error}",
                     full_path.display()
-                ));
-                continue;
+                )),
             }
-        };
-        let entry = build_file_entry(file_name, &full_path, &metadata, metadata_mode, &mut cache)?;
-
-        entries.push(entry);
-    }
+        },
+    )?;
 
     Ok(entries)
 }
@@ -106,71 +104,69 @@ fn read_file_entry(
     cache: &mut UserGroupCache,
 ) -> io::Result<FileEntry> {
     let full_path = std::path::absolute(target_path)?;
-    let metadata = fs::symlink_metadata(&full_path)?;
+    let stat = Stat::from(&fs::symlink_metadata(&full_path)?);
     let file_name = target_path
         .file_name()
         .unwrap_or(target_path.as_os_str())
         .to_os_string();
 
-    build_file_entry(file_name, &full_path, &metadata, metadata_mode, cache)
+    Ok(build_file_entry(
+        file_name,
+        full_path,
+        &stat,
+        metadata_mode,
+        cache,
+    ))
 }
 
 fn build_file_entry(
     path: std::ffi::OsString,
-    full_path: &Path,
-    metadata: &fs::Metadata,
+    full_path: PathBuf,
+    stat: &Stat,
     metadata_mode: MetadataMode,
     cache: &mut UserGroupCache,
-) -> io::Result<FileEntry> {
-    let symlink = if metadata.is_symlink() {
-        let target = fs::read_link(full_path).unwrap_or_else(|error| {
+) -> FileEntry {
+    let symlink = stat.is_symlink().then(|| {
+        let target = fs::read_link(&full_path).unwrap_or_else(|error| {
             report_error(format_args!(
                 "cannot read symbolic link '{}': {error}",
                 full_path.display()
             ));
-            std::path::PathBuf::new()
+            PathBuf::new()
         });
         // Permission errors cannot tell us whether a target is broken.
-        let is_broken = fs::metadata(full_path).is_err_and(|error| {
+        let is_broken = fs::metadata(&full_path).is_err_and(|error| {
             matches!(
                 error.raw_os_error(),
                 Some(libc::ENOENT | libc::ENOTDIR | libc::ELOOP)
             )
         });
-        Some(Symlink { target, is_broken })
-    } else {
-        None
-    };
-    let is_dir = metadata.is_dir();
-    let mode = metadata.mode();
-    let user_id = metadata.uid();
-    let group_id = metadata.gid();
+        Symlink { target, is_broken }
+    });
     let (owner, group) = match metadata_mode {
         MetadataMode::Basic => (String::new(), String::new()),
-        MetadataMode::Full => (cache.get_username(user_id), cache.get_groupname(group_id)),
+        MetadataMode::Full => (cache.get_username(stat.uid), cache.get_groupname(stat.gid)),
     };
 
-    Ok(FileEntry {
+    FileEntry {
         is_hidden: is_hidden(&path),
         path,
-        full_path: full_path.to_path_buf(),
-        filesystem_identity: (metadata.dev(), metadata.ino()),
-        is_dir,
-        is_executable: metadata.is_file() && (mode & 0o111) != 0,
-        mode,
-        size: metadata.len(),
+        full_path,
+        filesystem_identity: (stat.dev, stat.ino),
+        is_dir: stat.is_dir(),
+        is_executable: stat.is_file() && (stat.mode & 0o111) != 0,
+        mode: stat.mode,
+        size: stat.size,
         size_incomplete: false,
-        modified: metadata
-            .modified()
-            .unwrap_or(std::time::SystemTime::UNIX_EPOCH),
+        modified: stat.modified,
         owner,
         group,
-        user_id,
-        group_id,
-        nlink: metadata.nlink(),
+        user_id: stat.uid,
+        group_id: stat.gid,
+        nlink: stat.nlink,
         git_status: None,
         symlink,
-    })
+    }
 }
 
 pub(crate) fn is_hidden(file_name: &std::ffi::OsStr) -> bool {
