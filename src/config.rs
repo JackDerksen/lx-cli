@@ -1,5 +1,6 @@
 use crate::sort::{SortField, SortOptions, SortOrder};
 use crate::theme::Theme;
+use chrono::format::{Item, StrftimeItems};
 use colored::{ColoredString, Colorize};
 use serde::{Deserialize, Deserializer};
 use std::collections::{BTreeMap, HashMap};
@@ -314,6 +315,17 @@ impl DisplayConfig {
             || (long && self.long_format_fields.contains(&LongField::Size))
     }
 
+    /// Parsed `datetime_format` items; the format is validated when the config loads.
+    pub(crate) fn datetime_items(&self) -> Vec<Item<'_>> {
+        StrftimeItems::new(&self.datetime_format)
+            .parse()
+            .unwrap_or_else(|_| {
+                StrftimeItems::new(DEFAULT_DATETIME_FORMAT)
+                    .parse()
+                    .expect("default datetime format is valid")
+            })
+    }
+
     pub fn default_sort(&self) -> SortOptions {
         SortOptions::new(self.sort_field, self.sort_order)
     }
@@ -378,6 +390,16 @@ fn resolve_config(
     theme.apply_legacy(&document, diagnostics);
     theme.apply_document(&document, true, diagnostics);
     let mut display = settings.display;
+    if StrftimeItems::new(&display.datetime_format)
+        .parse()
+        .is_err()
+    {
+        diagnostics.push(format!(
+            "invalid display.datetime_format {:?}; using {DEFAULT_DATETIME_FORMAT:?}",
+            display.datetime_format
+        ));
+        display.datetime_format = default_datetime_format();
+    }
     if let Some(fields) = document
         .get("display")
         .and_then(|display| display.get("long_format_fields"))

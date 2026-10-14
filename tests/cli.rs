@@ -1400,3 +1400,34 @@ fn unknown_long_format_fields_are_reported_and_columns_stay_aligned() {
     assert_eq!(&lines[1][11..20], "      1  ", "links column: {stdout}");
     assert_eq!(&lines[1][20..], "file");
 }
+
+#[test]
+fn invalid_datetime_format_is_reported_and_replaced_by_the_default() {
+    let temp_dir = create_temp_dir("datetime-format");
+    let config_path = temp_dir.join(".config/lx/config.toml");
+    fs::create_dir_all(config_path.parent().expect("config parent"))
+        .expect("create config directory");
+    fs::write(&config_path, "[display]\ndatetime_format = \"%Q\"\n").expect("write config");
+    let listing = temp_dir.join("listing");
+    fs::create_dir(&listing).expect("create listing directory");
+    fs::write(listing.join("file"), "content").expect("write file");
+
+    for flags in [vec!["-l"], vec!["-lr"]] {
+        let output = lx_command(&temp_dir)
+            .args(&flags)
+            .arg(&listing)
+            .output()
+            .expect("run lx with an invalid datetime format");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "{stderr}");
+        assert!(
+            stderr.contains("invalid display.datetime_format \"%Q\""),
+            "{stderr}"
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("Modified") && stdout.contains("file"),
+            "{stdout}"
+        );
+    }
+}

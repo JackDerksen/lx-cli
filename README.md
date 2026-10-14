@@ -342,7 +342,7 @@ icon = "📓"
 
 Patterns support `*` for any number of characters and `?` for one character, with case-sensitive matching. A pattern without a path separator matches the entry's name; a pattern containing `/` matches its absolute listing path. `*` can cross path separators. A trailing `/` restricts the rule to directories and is removed before matching, so `src/` matches directories named `src` at any depth. Rules can also set `kind` to `file`, `directory`, or `any` (the default). `file` includes symlinks, consistent with `-f`; patterns match a link's name or path rather than its target. Pattern rules work with automatic icons disabled and keep icons inline with filenames, including tree output.
 
-Set `datetime_format` under `[display]` to change the long-format `modified` column. It uses Chrono’s strftime-style specifiers, so `%B %-d, %Y` renders a full month name (for example, `August 8, 2026`) and `%-I:%M %p` uses a 12-hour clock. Numeric and text directives are padded independently across the listing, keeping each date/time component aligned.
+Set `datetime_format` under `[display]` to change the long-format `modified` column. It uses Chrono’s strftime-style specifiers, so `%B %-d, %Y` renders a full month name (for example, `August 8, 2026`) and `%-I:%M %p` uses a 12-hour clock. Numeric and text directives are padded independently across the listing, keeping each date/time component aligned. An invalid format is reported and the default is used instead.
 
 Long-format titles are enabled and underlined by default. Only the header text is underlined, leaving spacing between columns clear. Set `attributes = []` under `[style.header]` to remove underlining. Long and recursive long output use the same theme roles.
 

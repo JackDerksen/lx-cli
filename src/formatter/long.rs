@@ -3,6 +3,7 @@ use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry};
 use crate::formatter::render::Renderer;
 use crate::formatter::{filename_width, print_line};
 use crate::sort::{SortOptions, sort_entries};
+use chrono::format::Item;
 use std::collections::HashMap;
 use std::io;
 use unicode_width::UnicodeWidthStr;
@@ -57,7 +58,7 @@ impl<'config> LongLayout<'config> {
     ) -> Self {
         let fields = config.display.long_format_fields.as_slice();
         let modified = if fields.contains(&LongField::Modified) {
-            format_modified_entries(entries, &config.display.datetime_format)
+            format_modified_entries(entries, &config.display.datetime_items())
         } else {
             vec![String::new(); entries.len()]
         };
@@ -172,10 +173,10 @@ fn print_long_rows(
     Ok(())
 }
 
-fn format_modified_entries(entries: &[FileEntry], datetime_format: &str) -> Vec<String> {
+fn format_modified_entries(entries: &[FileEntry], datetime_items: &[Item<'_>]) -> Vec<String> {
     let parts: Vec<Vec<DateTimePart>> = entries
         .iter()
-        .map(|entry| entry.format_modified_parts(datetime_format))
+        .map(|entry| entry.format_modified_parts(datetime_items))
         .collect();
     let mut widths = vec![0; parts.iter().map(Vec::len).max().unwrap_or(0)];
 

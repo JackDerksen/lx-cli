@@ -1,7 +1,7 @@
 /// Core data structures (FileEntry and FileType) that represent files and its metadata.
 use crate::config::IconConfig;
 use crate::icon::FileIcon;
-use chrono::format::{Item, StrftimeItems};
+use chrono::format::Item;
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -212,10 +212,11 @@ impl FileEntry {
         }
     }
 
-    pub fn format_modified_parts(&self, datetime_format: &str) -> Vec<DateTimePart> {
+    pub fn format_modified_parts(&self, datetime_items: &[Item<'_>]) -> Vec<DateTimePart> {
         let datetime: chrono::DateTime<chrono::Local> = self.modified.into();
 
-        StrftimeItems::new(datetime_format)
+        datetime_items
+            .iter()
             .map(|item| {
                 let alignment = match item {
                     Item::Numeric(_, _) => DateTimePartAlignment::Right,
