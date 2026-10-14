@@ -1,8 +1,8 @@
-use crate::config::{Config, apply_font_styles};
+use crate::config::Config;
 use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry};
-use crate::formatter::{filename_width, format_filename, print_line};
+use crate::formatter::render::Renderer;
+use crate::formatter::{filename_width, print_line};
 use crate::sort::{SortOptions, sort_entries};
-use colored::Colorize;
 use std::io;
 use unicode_width::UnicodeWidthStr;
 
@@ -42,8 +42,16 @@ pub fn calculate_column_widths(
                 .map(|e| e.nlink.to_string().len())
                 .max()
                 .unwrap_or(0),
-            "owner" => entries.iter().map(|e| e.owner.len()).max().unwrap_or(0),
-            "group" => entries.iter().map(|e| e.group.len()).max().unwrap_or(0),
+            "owner" => entries
+                .iter()
+                .map(|entry| UnicodeWidthStr::width(entry.owner.as_str()))
+                .max()
+                .unwrap_or(0),
+            "group" => entries
+                .iter()
+                .map(|entry| UnicodeWidthStr::width(entry.group.as_str()))
+                .max()
+                .unwrap_or(0),
             "size" => entries
                 .iter()
                 .map(|e| e.format_size().len())
@@ -137,104 +145,35 @@ fn print_long_entries_with_optional_filename_prefixes(
 ) -> io::Result<()> {
     let modified_values = format_modified_entries(entries, &config.display.datetime_format);
 
-    // Print each entry
+    let renderer = Renderer::new(config);
     for (entry_index, entry) in entries.iter().enumerate() {
-        let mut output_parts: Vec<String> = Vec::new();
-
-        for (idx, field) in fields.iter().enumerate() {
-            let part = match field.as_str() {
-                "git" => entry
-                    .git_status
-                    .map(|status| {
-                        status.format(widths.get("git").copied().unwrap_or(0), &config.colors.git)
-                    })
-                    .unwrap_or_default(),
-                "permissions" => {
-                    let width = widths.get("permissions").copied().unwrap_or(0);
-                    let permissions = entry.format_permissions();
-                    if idx < fields.len() - 1 {
-                        pad_to_display_width(permissions, width)
-                    } else {
-                        permissions
-                    }
-                }
-                "nlink" => {
-                    let width = widths.get("nlink").copied().unwrap_or(0);
-                    format!("{:>width$}", entry.nlink.to_string(), width = width)
-                }
-                "owner" => {
-                    let width = widths.get("owner").copied().unwrap_or(0);
-                    format!("{:<width$}", entry.owner, width = width)
-                }
-                "group" => {
-                    let width = widths.get("group").copied().unwrap_or(0);
-                    format!("{:<width$}", entry.group, width = width)
-                }
-                "size" => {
-                    let width = widths.get("size").copied().unwrap_or(0);
-                    format!("{:>width$}", entry.format_size(), width = width)
-                }
-                "modified" => {
-                    let width = widths.get("modified").copied().unwrap_or(0);
-                    let modified = &modified_values[entry_index];
-                    if idx < fields.len() - 1 {
-                        pad_to_display_width(modified.to_string(), width)
-                    } else {
-                        modified.to_string()
-                    }
-                }
-                "filename" => {
-                    let width = widths.get("filename").copied().unwrap_or(0);
-                    let filename_prefix = filename_prefixes
-                        .and_then(|prefixes| prefixes.get(entry_index))
-                        .map(String::as_str)
-                        .unwrap_or("");
-
-                    let padding = if idx < fields.len() - 1 {
-                        width.saturating_sub(
-                            UnicodeWidthStr::width(filename_prefix) + filename_width(entry, config),
-                        )
-                    } else {
-                        0
-                    };
-                    let filename_colored = format_filename(
-                        entry,
-                        config,
-                        padding,
-                        config
-                            .display
-                            .long_format_styles
-                            .get(field)
-                            .map(Vec::as_slice),
-                    );
-                    format!("{filename_prefix}{filename_colored}")
-                }
-                _ => String::new(),
-            };
-            let part = if field != "filename" && !part.is_empty() {
-                match config.display.long_format_styles.get(field) {
-                    Some(styles) => {
-                        let content = part.trim_end_matches(' ');
-                        format!(
-                            "{}{}",
-                            apply_font_styles(content.into(), styles),
-                            &part[content.len()..]
-                        )
-                    }
-                    None => part,
-                }
+        let mut output_parts = Vec::new();
+        for (index, field) in fields.iter().enumerate() {
+            let mut cell = renderer.field(entry, field, &modified_values[entry_index]);
+            if field == "filename" {
+                let filename_prefix = filename_prefixes
+                    .and_then(|prefixes| prefixes.get(entry_index))
+                    .map(String::as_str)
+                    .unwrap_or("");
+                cell.width += UnicodeWidthStr::width(filename_prefix);
+                cell.text = format!("{}{}", renderer.paint("tree", filename_prefix), cell.text);
+            }
+            if cell.text.is_empty() {
+                continue;
+            }
+            let right = matches!(field.as_str(), "size" | "nlink");
+            let width = if right || index < fields.len() - 1 {
+                widths.get(field).copied().unwrap_or(0)
             } else {
-                part
+                cell.width
             };
-            output_parts.push(part);
+            output_parts.push(cell.padded(width, right));
         }
-
-        let visible_parts: Vec<&str> = output_parts
-            .iter()
-            .map(|part| part.as_str())
-            .filter(|part| !part.is_empty())
-            .collect();
-        print_line(format_args!("{}{}", prefix, visible_parts.join("  ")))?;
+        print_line(format_args!(
+            "{}{}",
+            renderer.paint("tree", prefix),
+            output_parts.join(&" ".repeat(config.display.column_spacing))
+        ))?;
     }
     Ok(())
 }
@@ -301,16 +240,17 @@ fn print_long_titles(
 
             format!(
                 "{}{}",
-                apply_font_styles(
-                    title.color(config.display.get_long_format_title_color()),
-                    &config.display.long_format_title_style,
-                ),
+                config.theme.style("header").paint(title),
                 " ".repeat(padding)
             )
         })
         .collect();
 
-    print_line(format_args!("{}{}", prefix, titles.join("  ")))
+    print_line(format_args!(
+        "{}{}",
+        config.theme.style("tree").paint(prefix),
+        titles.join(&" ".repeat(config.display.column_spacing))
+    ))
 }
 
 fn column_title(field: &str) -> &str {

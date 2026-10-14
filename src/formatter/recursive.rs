@@ -128,7 +128,7 @@ fn print_short_tree(tree_entries: &[TreeEntry], config: &Config) -> io::Result<(
     for tree_entry in tree_entries {
         print_line(format_args!(
             "{} {}",
-            tree_entry.branch,
+            config.theme.style("tree").paint(&tree_entry.branch),
             format_short_entry(&display_entry(&tree_entry.entry), config)
         ))?;
     }

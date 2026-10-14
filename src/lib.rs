@@ -7,6 +7,7 @@ pub mod git;
 pub mod icon;
 pub mod reader;
 pub mod sort;
+pub mod theme;
 
 pub use cli::Args;
 pub use config::{Config, IconConfig};

@@ -1,49 +1,8 @@
-# Example configuration file for lx
-# Place this file at: ~/.config/lx/config
-
-[colors]
-# Available colours:
-# black, red, green, yellow, blue, magenta, cyan, white
-# bright_black, bright_red, bright_green, bright_yellow
-# bright_blue, bright_magenta, bright_cyan, bright_white
-
-# Colour for directories
-directory = "blue"
-
-# Colour for executable files
-executable = "red"
-
-# Colour for regular files
-regular = "white"
-
-# Colour for hidden files and directories
-hidden = "bright_black"
-
-# Symlink names and targets (broken links also show a [broken] marker)
-symlink = "cyan"
-broken_symlink = "bright_red"
-
-[colors.git]
-# Git badge colours (--git), using the colour names listed above
-clean = "bright_black" # -
-modified = "yellow"    # M
-staged = "green"       # S
-untracked = "cyan"     # ?
-conflict = "red"       # !
-mixed = "yellow"       # *
-
-[styles]
-# Filename font styles, combined with the existing colours.
-# Available styles: bold, dimmed, italic, underline, strikethrough, reversed.
-# Combine styles in an array, or use [] for no font attributes.
-directory = ["bold"]
-executable = ["bold"]
-regular = []
-symlink = []
-broken_symlink = []
-# Hidden entries inherit their file type's styles unless overridden here.
-# Symlink styles take precedence over hidden styles.
-# hidden = ["dimmed", "italic"]
+# Example TOML configuration for lx
+# Place at ~/.config/lx/config.toml (legacy extensionless config also works).
+# Omitted settings inherit defaults; optional style overrides are below.
+# Theme files live at ~/.config/lx/themes/<name>.toml.
+# theme = "my-theme"
 
 [icons]
 # Enable automatic Nerd Font icons (default: false).
@@ -115,20 +74,12 @@ enabled = false
 # pattern = "*/projectName/notes/"
 # icon = "📓"
 
-[icons.colors]
-# Custom colours for icons (separate from filename colours)
-# Uses the same colour names as [colors] section
-# By default, icon colours match the filename colours for each file type
-directory = "blue"
-executable = "red"
-regular = "white"
-hidden = "bright_black"
-symlink = "cyan"
-broken_symlink = "bright_red"
-
 [display]
 # Number of spaces between columns (default: 2)
 column_spacing = 2
+
+# Colour regular files by language or type using [style.file_type] (default: false)
+language_colors = false
 
 # Maximum number of rows before wrapping to next column in short format
 # Only applies to short format (not -l). Set to 0 for no limit (default: 0)
@@ -175,23 +126,53 @@ long_format_fields = [
 # Show column titles above long-format output (default: true)
 long_format_titles = true
 
-# Colour used for long-format column titles
-long_format_title_color = "bright_black"
-
-# Font styles for column titles (default: underline). Use [] to disable.
-long_format_title_style = ["underline"]
-
-[display.long_format_styles]
-# Optional font styles for individual long-format fields, using the field names
-# listed above. Colours remain controlled by the existing colour settings.
-# Filename styles replace [styles] in long output; other modes keep [styles].
-# owner = ["bold"]
-# modified = ["dimmed"]
-# filename = ["bold", "italic"]
-
 [display.tree]
 # Tree display style for recursive output (-r flag)
 # Options: "ascii" (default) or "indent"
 # - "ascii": Uses box-drawing characters (├─, ╰─, │)
 # - "indent": Uses simple spacing for indentation
 style = "ascii"
+
+# Themes and inline configuration share these optional semantic style tables.
+# See themes/default.toml for every role and the explicit built-in hex palette.
+# Colours: #RGB, #RRGGBB, six-digit hex, ANSI names, or "default".
+# Attributes: bold, dimmed, italic, underline, strikethrough, reversed.
+# Omitted properties inherit; [] clears attributes. Background is optional.
+# Explicit inline styles take precedence over the selected theme.
+# [style.filekinds]
+# directory = { foreground = "#9BE3ED", attributes = ["bold"] }
+# executable = { foreground = "#FC808F", attributes = ["bold"] }
+# regular = { foreground = "#E2E2E3" }
+#
+# [style.filenames]
+# hidden = { foreground = "#68656F", attributes = ["dimmed"] }
+#
+# [style.icons]
+# directory = { foreground = "#9BE3ED" }
+# hidden = { foreground = "#68656F" }
+#
+# [style.header]
+# foreground = "#68656F"
+# attributes = ["underline"]
+#
+# [style.permissions]
+# read = { foreground = "#BBE8EE" }
+# write = { foreground = "#FFC79E" }
+# execute = { foreground = "#D6D9FC" }
+#
+# [style.size.megabytes]
+# number = { foreground = "#E2E2E3" }
+# unit = { foreground = "#FFC79E" }
+#
+# [style.date]
+# foreground = "#BBE8EE"
+#
+# [style.file_type]
+# source = { foreground = "#9BE3ED" }
+# document = { foreground = "#CFEEC2" }
+#
+# [style.git]
+# modified = { foreground = "#FFDA84", attributes = ["bold"] }
+#
+# [style.tree]
+# foreground = "#68656F"

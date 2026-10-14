@@ -1,6 +1,7 @@
 mod long;
 mod one_per_line;
 mod recursive;
+mod render;
 mod short;
 mod tree;
 
@@ -9,41 +10,17 @@ pub use one_per_line::{format_one_per_line, format_plain};
 pub use recursive::{TreeOptions, format_recursive};
 pub use short::{format_short, format_short_compact};
 
-use crate::config::{Config, FontStyle, apply_font_styles};
+use crate::config::Config;
 use crate::file_entry::FileEntry;
-use colored::Colorize;
+use render::Renderer;
 use std::io::{self, Write};
 use unicode_width::UnicodeWidthStr;
 
-fn format_filename(
-    entry: &FileEntry,
-    config: &Config,
-    padding: usize,
-    styles: Option<&[FontStyle]>,
-) -> String {
-    let filename = entry.display_name().color(entry.get_color(&config.colors));
-    let filename = apply_font_styles(
-        filename,
-        styles.unwrap_or_else(|| entry.font_styles(&config.styles)),
-    )
-    .to_string();
-    let icon = entry.get_icon_custom(&config.icons);
-    let mut output = if icon.is_empty() {
-        filename
-    } else {
-        format!(
-            "{} {filename}",
-            icon.color(entry.get_icon_color(&config.icons.colors))
-        )
-    };
-    output.extend(std::iter::repeat_n(' ', padding));
-    output
-}
-
 fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
-    let output = format_filename(entry, config, 0, None);
+    let renderer = Renderer::new(config);
+    let output = renderer.filename(entry, false).text;
     match entry.git_status {
-        Some(status) => format!("{} {output}", status.format(1, &config.colors.git)),
+        Some(status) => format!("{} {output}", renderer.git(status, false).text),
         None => output,
     }
 }

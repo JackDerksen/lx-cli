@@ -3,7 +3,7 @@ use crate::file_entry::{FileEntry, Symlink};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,13 +103,12 @@ fn build_file_entry(
         None
     };
     let is_dir = metadata.is_dir();
-    let mode = metadata.permissions().mode();
+    let mode = metadata.mode();
+    let user_id = metadata.uid();
+    let group_id = metadata.gid();
     let (owner, group) = match metadata_mode {
         MetadataMode::Basic => (String::new(), String::new()),
-        MetadataMode::Full => (
-            cache.get_username(metadata.uid()),
-            cache.get_groupname(metadata.gid()),
-        ),
+        MetadataMode::Full => (cache.get_username(user_id), cache.get_groupname(group_id)),
     };
 
     Ok(FileEntry {
@@ -126,6 +125,8 @@ fn build_file_entry(
             .unwrap_or(std::time::SystemTime::UNIX_EPOCH),
         owner,
         group,
+        user_id,
+        group_id,
         nlink: metadata.nlink(),
         git_status: None,
         symlink,

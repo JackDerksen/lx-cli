@@ -1,0 +1,96 @@
+# lx's built-in palette. The terminal background is left unchanged.
+
+[style.filekinds]
+regular = { foreground = "#E2E2E3" }
+directory = { foreground = "#9BE3ED", attributes = ["bold"] }
+executable = { foreground = "#FC808F", attributes = ["bold"] }
+symlink = { foreground = "#BBE8EE" }
+broken_symlink = { foreground = "#FF9DB1", attributes = ["bold"] }
+pipe = { foreground = "#FFDA84" }
+socket = { foreground = "#B4BEFE" }
+block_device = { foreground = "#FFAC72", attributes = ["bold"] }
+character_device = { foreground = "#FFC79E", attributes = ["bold"] }
+special = { foreground = "#68656F" }
+
+[style.filenames]
+# Omitted attributes inherit the entry's file kind.
+hidden = { foreground = "#68656F" }
+
+[style.file_type]
+image = { foreground = "#B4BEFE" }
+video = { foreground = "#D6D9FC" }
+audio = { foreground = "#BBE8EE" }
+archive = { foreground = "#FC808F" }
+document = { foreground = "#CFEEC2" }
+source = { foreground = "#E2E2E3" }
+config = { foreground = "#9BE3ED" }
+build = { foreground = "#FFAC72" }
+temporary = { foreground = "#68656F", attributes = ["dimmed"] }
+
+[style.icons]
+directory = { foreground = "#9BE3ED" }
+executable = { foreground = "#FC808F" }
+regular = { foreground = "#E2E2E3" }
+hidden = { foreground = "#68656F" }
+symlink = { foreground = "#BBE8EE" }
+broken_symlink = { foreground = "#FF9DB1" }
+
+[style.permissions]
+type = { foreground = "#68656F" }
+read = { foreground = "#BBE8EE" }
+write = { foreground = "#FFC79E" }
+execute = { foreground = "#D6D9FC" }
+special = { foreground = "#FF9DB1" }
+absent = { foreground = "#68656F" }
+
+[style.size.bytes]
+number = { foreground = "#E2E2E3" }
+unit = { foreground = "#BBE8EE" }
+
+[style.size.kilobytes]
+number = { foreground = "#E2E2E3" }
+unit = { foreground = "#FFE9A2" }
+
+[style.size.megabytes]
+number = { foreground = "#E2E2E3" }
+unit = { foreground = "#FFC79E" }
+
+[style.size.gigabytes]
+number = { foreground = "#E2E2E3" }
+unit = { foreground = "#D6D9FC" }
+
+[style.users]
+user_root = { foreground = "#FF9DB1" }
+user_you = { foreground = "#E2E2E3" }
+user_other = { foreground = "#E2E2E3" }
+group_root = { foreground = "#FF9DB1" }
+group_yours = { foreground = "#E2E2E3" }
+group_other = { foreground = "#E2E2E3" }
+
+[style.links]
+normal = { foreground = "#68656F" }
+multiple = { foreground = "#B4BEFE", attributes = ["bold"] }
+
+[style.git]
+clean = { foreground = "#68656F" }
+modified = { foreground = "#FFDA84" }
+staged = { foreground = "#BCF092" }
+untracked = { foreground = "#9BE3ED" }
+conflict = { foreground = "#FC808F", attributes = ["bold"] }
+mixed = { foreground = "#FFAC72", attributes = ["bold"] }
+
+[style.header]
+foreground = "#68656F"
+attributes = ["underline"]
+
+[style.date]
+foreground = "#E2E2E3"
+
+[style.tree]
+foreground = "#68656F"
+
+[style.punctuation]
+foreground = "#68656F"
+
+[style.symlink_path]
+foreground = "#BBE8EE"

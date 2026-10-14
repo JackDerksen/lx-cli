@@ -5,7 +5,7 @@ A modern alternative to `ls` with more readable formatting, colours, optional ic
 ## Features
 
 - **Crazy fast**: just as fast (if not faster) compared to the stock `ls` command
-- **Colourized output** with optional file type icons
+- **Colourised output** with optional file type icons
 - **Multiple display modes**: short (default), long (`-l`), one-per-line (`-1`), compact (`-c`), and recursive tree view (`-r`)
 - **Configurable**: customise colours, font styles, hidden-file styling, spacing, display options, and tree styles
 - **Smart alignment**: properly handles unicode characters and icons
@@ -187,23 +187,20 @@ With `--git`, short listings show a single-character status badge before each en
 
 | Badge | Meaning | Default colour |
 | --- | --- | --- |
-| `-` | No changes reported by Git (including ignored entries) | Bright black |
+| `-` | No changes reported by Git (including ignored entries) | Light grey |
 | `M` | Unstaged changes, including deletions | Yellow |
 | `S` | Changes ready to commit, including additions and renames | Green |
-| `?` | Not yet tracked by Git | Cyan |
+| `?` | Not yet tracked by Git | Blue |
 | `!` | An unresolved merge conflict | Red |
-| `*` | Both staged and unstaged changes, or a directory containing different states | Yellow |
+| `*` | Both staged and unstaged changes, or a directory containing different states | Orange |
 
-Customise badge colours under `[colors.git]` in `~/.config/lx/config`. Each setting is optional; omitted settings keep their defaults. The available colour names are the same as for `[colors]`:
+Customise badges with semantic styles in your configuration or theme:
 
 ```toml
-[colors.git]
-clean = "bright_black"
-modified = "yellow"
-staged = "green"
-untracked = "cyan"
-conflict = "red"
-mixed = "yellow"
+[style.git]
+clean = { foreground = "#68656F" }
+modified = { foreground = "#FFDA84", attributes = ["bold"] }
+staged = { foreground = "#BCF092" }
 ```
 
 Directories summarise changes anywhere beneath them, including deleted files. Any descendant conflict makes the directory show `!`. These summaries include hidden and excluded descendants, so they describe repository state independently of listing filters.
@@ -216,26 +213,65 @@ Symlinks display as `name -> target` in human-readable listings, using the targe
 
 The default layout keeps icons off and uses underlined titles in long output. Columns appear as Permissions, Size, Owner, Modified, and Name; `--git` adds Git immediately before Name. Dates use `%-d %b %H:%M` (for example, `13 Oct 15:14`), and compact output wraps after ten rows. Existing configuration settings override these defaults.
 
-Link text defaults to cyan, or bright red for broken links. Customise `symlink` and `broken_symlink` under `[colors]` and `[icons.colors]`, and set `symlink` under `[icons]` to enable a link icon. Link styling takes precedence over hidden-file styling. Target permission errors are not marked as broken because the target's existence cannot be determined. Plain, piped-default, and NUL output emit only link filenames, including broken links, with no target annotation.
+Configuration uses TOML at `~/.config/lx/config.toml`. The older extensionless `~/.config/lx/config` is still read when `config.toml` is absent. See [`config.example`](config.example) for layout and icon options.
 
-`lx` can be customised using a configuration file at `~/.config/lx/config`.
+### Themes
 
-See [`config.example`](config.example) for all available options and detailed configuration examples.
+The tool uses my custom theme by default. Directories are bold blue, executables bold red, regular files plain white, and headers grey and underlined. Each metadata component can still be styled independently. The terminal background stays unchanged.
 
-### Configuration Sections
+Set `language_colors = true` under `[display]` to colour regular files by language or type (source, document, config, build, and so on) using the `style.file_type` roles. It is off by default.
 
-The configuration file supports the following sections:
+Create `~/.config/lx/themes/my-theme.toml` and select it at the top of your configuration:
 
-- **`[colors]`**: Customise text colours for different file types, including hidden files
-- **`[colors.git]`**: Customise Git badge colours for each status
-- **`[styles]`**: Combine font styles for filenames by file type
-- **`[icons]`**: Enable automatic icons or set global icons for different file types
-- **`[icons.paths]`**: Override icons for individual directories, files, or symlinks
-- **`[[icons.patterns]]`**: Set ordered icon rules for names or paths
-- **`[icons.colors]`**: Customise colours for icons separately from filenames, including hidden file icons
-- **`[display]`**: Control layout options, column wrapping, and default sorting
-- **`[display.long_format_styles]`**: Set font styles for individual long-format columns
-- **`[display.tree]`**: Control tree display style for recursive listings (`style = "ascii"` or `style = "indent"`)
+```toml
+theme = "my-theme"
+
+[display]
+column_spacing = 2
+```
+
+Theme files contain only `[style]` tables. Start from [`themes/default.toml`](themes/default.toml), or define just the roles you want to change:
+
+```toml
+# ~/.config/lx/themes/my-theme.toml
+[style.filekinds]
+directory = { foreground = "#9BE3ED", attributes = ["bold"] }
+executable = { foreground = "#FC808F", attributes = ["bold", "underline"] }
+
+[style.permissions]
+read = { foreground = "#BBE8EE" }
+write = { foreground = "#FFC79E" }
+execute = { foreground = "#D6D9FC" }
+
+[style.header]
+foreground = "#68656F"
+attributes = ["underline"]
+```
+
+Use the same tables in `config.toml` for inline overrides. Precedence is built-in defaults, selected theme, explicit legacy settings, then inline `[style]` settings. Each property merges independently: omitted properties inherit, `attributes = []` removes inherited attributes, and `foreground = "default"` or `background = "default"` restores the terminal's colour. A missing or invalid theme reports a warning and keeps the built-in theme and your config overrides.
+
+Styles accept `foreground`, optional `background`, and `attributes`. Colours support `#RGB`, `#RRGGBB`, six-digit hex without `#`, and the ANSI names `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, plus their `bright_` variants. Font attributes are `bold`, `dimmed`, `italic`, `underline`, `strikethrough`, and `reversed`. Attributes replace the inherited list. Colour and font styling honour `NO_COLOR`; plain and NUL output always remains undecorated. RGB colours and individual attributes depend on terminal support.
+
+| Style table | Roles |
+| --- | --- |
+| `style.filekinds` | `regular`, `directory`, `executable`, `symlink`, `broken_symlink`, `pipe`, `socket`, `block_device`, `character_device`, `special` |
+| `style.filenames` | `hidden` (inherits file-kind attributes unless explicitly replaced) |
+| `style.file_type` | `image`, `video`, `audio`, `archive`, `document`, `source`, `config`, `build`, `temporary` |
+| `style.icons` | `directory`, `executable`, `regular`, `hidden`, `symlink`, `broken_symlink` |
+| `style.permissions` | `type`, `read`, `write`, `execute`, `special`, `absent` |
+| `style.size.bytes`, `.kilobytes`, `.megabytes`, `.gigabytes` | `number`, `unit` |
+| `style.users` | `user_root`, `user_you`, `user_other`, `group_root`, `group_yours`, `group_other` |
+| `style.links` | `normal`, `multiple` |
+| `style.git` | `clean`, `modified`, `staged`, `untracked`, `conflict`, `mixed` |
+| Standalone tables | `style.header`, `style.date`, `style.tree`, `style.punctuation`, `style.symlink_path` |
+
+File categories are recognised by filename or extension without reading contents. They overlay regular-file styles; executable and symlink styles take precedence. Hidden styling overlays the resulting filename style. Link names and targets have separate styles; broken targets use `filekinds.broken_symlink`. Group membership includes the effective and supplementary groups. Permission styling includes setuid, setgid, and sticky-bit markers.
+
+Only fields that lx displays have theme roles; eza's repository branch, security-context, inode, and block fields are not part of this schema. General layout, sorting, icon glyphs, paths, and patterns remain in `config.toml` rather than theme files.
+
+Existing `[colors]`, `[colors.git]`, `[styles]`, `[icons.colors]`, `long_format_title_color`, `long_format_title_style`, and `[display.long_format_styles]` settings remain supported. Legacy column attributes apply only in long output; explicit inline style attributes take precedence. New themes should use `[style]`.
+
+### Icons and layout
 
 Enable automatic [Nerd Font icons](https://www.nerdfonts.com/cheat-sheet) with:
 
@@ -246,7 +282,7 @@ enabled = true
 
 System folders get dedicated icons for Home, Desktop, Documents, Downloads, Music, Pictures, Movies/Videos, etc. where those folders are available. macOS also recognises Applications and Library; Linux recognises `/etc`, `/usr`, `/var`, `/tmp`, and `/home`. Linux user folders follow XDG settings, including renamed or relocated folders. Recognition uses the actual directory, so an unrelated folder named `Documents` keeps the generic folder icon. Symlinks retain their link icon.
 
-Standard hidden folders in your home directory also get dedicated icons: `.config`, `.cache`, `.local`, `.Trash`, and `.ssh`. Linux additionally recognises the XDG data, state, executable, and trash directories, including relocated paths. Use `-a` to include hidden entries in listings. Both automatic and custom icons keep the hidden icon colour from `[icons.colors]`.
+Standard hidden folders in your home directory also get dedicated icons: `.config`, `.cache`, `.local`, `.Trash`, and `.ssh`. Linux additionally recognises the XDG data, state, executable, and trash directories, including relocated paths. Use `-a` to include hidden entries in listings. Both automatic and custom icons use `style.icons.hidden`.
 
 Common development folders get icons by name wherever they appear: `.git`, `.github`, `src`, `source`, `sources`, `lib`, `test`, `tests`, `target`, `build`, `docs`, `assets`, `images`, `vendor`, `scripts`, `bin`, etc. These defaults apply to directories when automatic icons are enabled; files and symlinks keep their own icon selection.
 
@@ -256,7 +292,7 @@ Automatic file icons also recognise common source languages (including Rust, Pyt
 
 Automatic icons work in short, compact, long, and recursive listings. In long output, icons sit immediately beside filenames within the `Name` column. Older `icon` entries in `long_format_fields` are ignored. Plain and NUL output remain undecorated.
 
-Any explicit file-type icon overrides the automatic choice globally. For example, `directory = "📁"` replaces every directory icon, including system folders, and `directory = ""` hides them all. Omit a setting to use its automatic default. Existing custom icons still work without `enabled = true`; `enabled` controls the automatic defaults. Icon colours remain configurable under `[icons.colors]`.
+Any explicit file-type icon overrides the automatic choice globally. For example, `directory = "📁"` replaces every directory icon, including system folders, and `directory = ""` hides them all. Omit a setting to use its automatic default. Existing custom icons still work without `enabled = true`; `enabled` controls the automatic defaults. Icon colours and attributes use `[style.icons]`.
 
 Override individual paths under `[icons.paths]`:
 
@@ -293,25 +329,6 @@ Patterns support `*` for any number of characters and `?` for one character, wit
 
 Set `datetime_format` under `[display]` to change the long-format `modified` column. It uses Chrono’s strftime-style specifiers, so `%B %-d, %Y` renders a full month name (for example, `August 8, 2026`) and `%-I:%M %p` uses a 12-hour clock. Numeric and text directives are padded independently across the listing, keeping each date/time component aligned.
 
-Font styles support `bold`, `dimmed`, `italic`, `underline`, `strikethrough`, and `reversed`. Combine them in an array, or use `[]` to remove font attributes. Existing colour settings continue to work independently. Directories and executables stay bold by default; hidden entries inherit their file type's styles unless `hidden` is set. Symlink and broken-symlink styles take precedence over hidden styles.
+Long-format titles are enabled and underlined by default. Only the header text is underlined, leaving spacing between columns clear. Set `attributes = []` under `[style.header]` to remove underlining. Long and recursive long output use the same theme roles.
 
-Long-format titles are enabled and underlined by default. Only the header text is underlined, leaving spacing between columns clear. For example:
-
-```toml
-[styles]
-directory = ["bold"]
-regular = ["italic"]
-hidden = ["dimmed"]
-
-[display]
-long_format_titles = true
-long_format_title_style = ["bold", "underline"]
-
-[display.long_format_styles]
-owner = ["bold"]
-modified = ["dimmed"]
-```
-
-Column styles use the same field names as `long_format_fields` and apply to both `-l` and `-lr`. A `filename` column style replaces the file type's font attributes in long output. Set `long_format_title_style = []` to remove header underlining. Font styles follow the existing colour controls, including `NO_COLOR`, and plain or NUL output always remains undecorated. Individual attributes depend on terminal support.
-
-For a complete list of available colours, icons, and configuration options, please refer to [`config.example`](config.example).
+For the complete built-in theme and general configuration options, see [`themes/default.toml`](themes/default.toml) and [`config.example`](config.example).

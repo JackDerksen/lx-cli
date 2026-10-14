@@ -1,8 +1,7 @@
 /// Handles file type icons and their associated colours.
-use crate::config::{ColorConfig, IconColorConfig, IconConfig, IconPattern, IconPatternKind};
+use crate::config::{IconConfig, IconPattern, IconPatternKind};
 use crate::file_entry::FileEntry;
 use crate::filter::matches_pattern;
-use colored::Color;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::os::unix::fs::MetadataExt;
@@ -109,6 +108,78 @@ pub(crate) fn file_name_icon(name: &OsStr) -> Option<&'static str> {
         "zip" | "tar" | "gz" | "tgz" | "bz2" | "xz" | "7z" | "rar" | "zst" => "\u{f1c6}",
         "sql" | "db" | "sqlite" | "sqlite3" => "\u{e64d}",
         "ttf" | "otf" | "woff" | "woff2" => "\u{e659}",
+        _ => return None,
+    })
+}
+
+pub(crate) fn file_category(name: &OsStr) -> Option<&'static str> {
+    let name = name.to_str()?.to_ascii_lowercase();
+    let stem = name.split(['.', '-', '_']).next()?;
+
+    match stem {
+        "license" | "licence" | "copying" | "copyright" | "readme" | "changelog"
+        | "contributing" | "authors" => return Some("file_type.document"),
+        "makefile" | "gnumakefile" | "bsdmakefile" | "dockerfile" | "containerfile" => {
+            return Some("file_type.build");
+        }
+        _ => {}
+    }
+
+    match name.as_str() {
+        "cargo.toml"
+        | "cargo.lock"
+        | "package.json"
+        | "package-lock.json"
+        | "pnpm-lock.yaml"
+        | "yarn.lock"
+        | "bun.lockb"
+        | "pyproject.toml"
+        | "pipfile"
+        | "pipfile.lock"
+        | "poetry.lock"
+        | "go.mod"
+        | "go.sum"
+        | "gemfile"
+        | "gemfile.lock"
+        | "composer.json"
+        | "composer.lock"
+        | "compose.yml"
+        | "compose.yaml"
+        | "docker-compose.yml"
+        | "docker-compose.yaml" => return Some("file_type.build"),
+        ".gitignore" | ".gitattributes" | ".gitmodules" | ".gitkeep" | ".dockerignore"
+        | ".editorconfig" | ".npmrc" | ".prettierrc" | ".eslintrc" | ".bashrc" | ".zshrc"
+        | ".profile" | ".bash_profile" | ".zprofile" | ".envrc" => return Some("file_type.config"),
+        _ => {}
+    }
+
+    if name == ".env" || name.starts_with(".env.") {
+        return Some("file_type.config");
+    }
+    if name.ends_with('~') {
+        return Some("file_type.temporary");
+    }
+
+    Some(match name.rsplit_once('.')?.1 {
+        "png" | "jpg" | "jpeg" | "gif" | "webp" | "avif" | "heic" | "bmp" | "ico" | "tif"
+        | "tiff" | "svg" => "file_type.image",
+        "mp4" | "mkv" | "mov" | "avi" | "webm" | "m4v" | "mpg" | "mpeg" => "file_type.video",
+        "mp3" | "wav" | "flac" | "ogg" | "opus" | "m4a" | "aiff" => "file_type.audio",
+        "zip" | "tar" | "gz" | "tgz" | "bz2" | "xz" | "7z" | "rar" | "zst" => "file_type.archive",
+        "md" | "markdown" | "mdx" | "txt" | "rst" | "pdf" | "doc" | "docx" | "odt" | "rtf"
+        | "csv" | "tsv" | "xls" | "xlsx" | "ods" | "ppt" | "pptx" | "odp" | "epub" | "mobi"
+        | "db" | "sqlite" | "sqlite3" => "file_type.document",
+        "rs" | "py" | "pyi" | "pyw" | "js" | "mjs" | "cjs" | "ts" | "mts" | "cts" | "jsx"
+        | "tsx" | "go" | "c" | "h" | "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" | "java"
+        | "rb" | "php" | "lua" | "swift" | "kt" | "kts" | "sh" | "bash" | "zsh" | "fish"
+        | "ps1" | "html" | "htm" | "css" | "scss" | "sass" | "sql" => "file_type.source",
+        "json" | "jsonc" | "json5" | "toml" | "yaml" | "yml" | "ini" | "conf" | "cfg" | "xml" => {
+            "file_type.config"
+        }
+        "lock" => "file_type.build",
+        "tmp" | "temp" | "bak" | "old" | "orig" | "swp" | "swo" | "part" | "cache" | "log" => {
+            "file_type.temporary"
+        }
         _ => return None,
     })
 }
@@ -230,24 +301,6 @@ impl FileIcon {
             FileIcon::Executable => config.executable.as_deref(),
             FileIcon::Symlink => config.symlink.as_deref(),
             FileIcon::RegularFile => config.regular.as_deref(),
-        }
-    }
-
-    pub fn get_color(&self, config: &ColorConfig) -> Color {
-        match self {
-            FileIcon::Directory => config.get_directory_color(),
-            FileIcon::Executable => config.get_executable_color(),
-            FileIcon::Symlink => crate::config::parse_color(&config.symlink),
-            FileIcon::RegularFile => config.get_regular_color(),
-        }
-    }
-
-    pub fn get_icon_color(&self, config: &IconColorConfig) -> Color {
-        match self {
-            FileIcon::Directory => config.get_directory_color(),
-            FileIcon::Executable => config.get_executable_color(),
-            FileIcon::Symlink => crate::config::parse_color(&config.symlink),
-            FileIcon::RegularFile => config.get_regular_color(),
         }
     }
 }

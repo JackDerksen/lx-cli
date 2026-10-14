@@ -21,6 +21,7 @@ fn lx_command(home_dir: &Path) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_lx"));
     command
         .env("HOME", home_dir)
+        .env("COLORTERM", "truecolor")
         .env("NO_COLOR", "1")
         .env_remove("CLICOLOR_FORCE");
     command
@@ -316,7 +317,7 @@ fn path_icons_override_defaults_but_global_icons_still_win() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("\x1b[90mH\x1b[0m"),
+        stdout.contains("\x1b[38;2;104;101;111mH\x1b[0m"),
         "custom icon lost hidden colour: {stdout:?}"
     );
 
@@ -777,7 +778,7 @@ fn git_status_works_across_display_modes_and_worktrees() {
         .arg(repository.join("src/clean"))
         .output()
         .expect("list clean entry with colours");
-    assert!(String::from_utf8_lossy(&output.stdout).starts_with("\x1b[90m-\x1b[0m "));
+    assert!(String::from_utf8_lossy(&output.stdout).starts_with("\x1b[38;2;104;101;111m-\x1b[0m "));
 
     let config_path = home_dir.join(".config/lx/config");
     let mut configuration = fs::read_to_string(&config_path).expect("read config");
@@ -801,7 +802,7 @@ fn git_status_works_across_display_modes_and_worktrees() {
         assert!(output.status.success());
         assert!(output.stderr.is_empty(), "invalid colour configuration");
         let stdout = String::from_utf8_lossy(&output.stdout);
-        for badge in ["\x1b[94m-", "\x1b[35mM", "\x1b[32mS"] {
+        for badge in ["\x1b[94m-", "\x1b[35mM", "\x1b[38;2;188;240;146mS"] {
             assert!(
                 stdout.contains(badge),
                 "missing badge colour for {flags:?}: {stdout:?}"
@@ -991,5 +992,223 @@ fn closed_output_exits_quietly_across_display_modes() {
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    fs::remove_dir_all(temp_dir).expect("remove test directory");
+}
+
+fn without_ansi(text: &str) -> String {
+    let mut characters = text.chars().peekable();
+    let mut plain = String::new();
+    while let Some(character) = characters.next() {
+        if character == '\u{1b}' && characters.peek() == Some(&'[') {
+            characters.next();
+            for character in characters.by_ref() {
+                if character == 'm' {
+                    break;
+                }
+            }
+        } else {
+            plain.push(character);
+        }
+    }
+    plain
+}
+
+#[test]
+fn toml_themes_merge_properties_and_keep_styled_columns_aligned() {
+    let example: lx_cli::Config =
+        toml::from_str(include_str!("../config.example")).expect("example config");
+    assert!(!example.display.language_colors);
+    let builtin: lx_cli::Config =
+        toml::from_str(include_str!("../themes/default.toml")).expect("default theme");
+    assert_eq!(
+        builtin.theme.style("filekinds.regular").foreground,
+        Some(colored::Color::TrueColor {
+            r: 226,
+            g: 226,
+            b: 227
+        })
+    );
+    let temp_dir = create_temp_dir("themes");
+    let home_dir = temp_dir.join("home");
+    let config_dir = home_dir.join(".config/lx");
+    let directory = temp_dir.join("entries");
+    fs::create_dir_all(config_dir.join("themes")).expect("create theme directory");
+    fs::create_dir_all(directory.join(".hidden")).expect("create entries");
+    fs::create_dir(directory.join("folder")).expect("create folder");
+    fs::write(directory.join("界.rs"), "source").expect("write source");
+    fs::write(directory.join("README.md"), vec![b'x'; 1500]).expect("write document");
+    fs::write(
+        config_dir.join("config"),
+        "[display]\nlong_format_fields = ['owner']\n",
+    )
+    .expect("write legacy config to check preferred path");
+    fs::write(
+        config_dir.join("themes/custom.toml"),
+        r##"
+[style.filekinds]
+directory = { foreground = "#123456", attributes = ["bold", "underline"] }
+regular = { foreground = "#ABC" }
+[style.file_type]
+source = { foreground = "ABCDEF", attributes = ["italic"] }
+[style.filenames]
+hidden = { foreground = "default" }
+[style.header]
+attributes = ["bold", "underline"]
+[style.permissions]
+read = { foreground = "#F1FA8C", attributes = ["italic"] }
+[style.size.kilobytes]
+number = { foreground = "#112233" }
+unit = { foreground = "#445566", attributes = ["bold"] }
+[style.tree]
+foreground = "#112233"
+"##,
+    )
+    .expect("write custom theme");
+    let configuration = r##"
+theme = "custom"
+[display]
+long_format_fields = ["filename", "size", "owner", "modified", "permissions"]
+column_spacing = 3
+language_colors = true
+[display.long_format_styles]
+permissions = ["bold"]
+[colors]
+directory = "red"
+[style.filekinds]
+directory = { foreground = "#9BE3ED" }
+[style.file_type]
+source = { attributes = [] }
+[style.header]
+attributes = []
+[style.permissions]
+write = { attributes = ["italic"], background = "#222125" }
+"##;
+    let config_path = config_dir.join("config.toml");
+    fs::write(&config_path, configuration).expect("write preferred config");
+    for flags in [vec!["-al"], vec!["-alr"]] {
+        let styled = lx_command(&home_dir)
+            .env_remove("NO_COLOR")
+            .env("CLICOLOR_FORCE", "1")
+            .args(&flags)
+            .arg(&directory)
+            .output()
+            .expect("render theme");
+        assert!(styled.status.success());
+        assert!(
+            styled.stderr.is_empty(),
+            "{}",
+            String::from_utf8_lossy(&styled.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&styled.stdout);
+        assert!(
+            stdout.contains("\x1b[1;4;38;2;155;227;237mfolder"),
+            "property merge failed: {stdout:?}"
+        );
+        assert!(
+            stdout.contains("\x1b[1;4m.hidden"),
+            "hidden attributes did not inherit: {stdout:?}"
+        );
+        assert!(
+            stdout.contains("\x1b[38;2;171;205;239m界.rs"),
+            "empty attributes did not clear theme: {stdout:?}"
+        );
+        assert!(
+            stdout.contains("\x1b[1;38;2;241;250;140mr"),
+            "inline/theme permission attributes lost: {stdout:?}"
+        );
+        assert!(
+            stdout.contains("\x1b[3;48;2;34;33;37;38;2;255;199;158mw"),
+            "inline attributes or background lost: {stdout:?}"
+        );
+        assert!(
+            stdout.contains("\x1b[38;2;17;34;51m1.5"),
+            "size number role missing: {stdout:?}"
+        );
+        assert!(
+            stdout.contains("\x1b[1;38;2;68;85;102mK"),
+            "size unit role missing: {stdout:?}"
+        );
+        let plain = lx_command(&home_dir)
+            .args(&flags)
+            .arg(&directory)
+            .output()
+            .expect("render without colour");
+        assert_eq!(without_ansi(&stdout).as_bytes(), plain.stdout);
+        let lines: Vec<_> = String::from_utf8(plain.stdout)
+            .expect("UTF-8 output")
+            .lines()
+            .map(str::to_owned)
+            .collect();
+        let permission_positions: Vec<_> = lines
+            .iter()
+            .skip(1)
+            .map(|line| {
+                unicode_width::UnicodeWidthStr::width(
+                    line.get(..line.len() - 10).expect("permission suffix"),
+                )
+            })
+            .collect();
+        assert!(
+            permission_positions
+                .iter()
+                .all(|position| *position == permission_positions[0]),
+            "styling changed alignment: {lines:?}"
+        );
+    }
+
+    for invalid_theme in [
+        "[style.filekinds]\ndirectory = { foreground = 'invalid' }\n",
+        "[style.filekinds]\ndirectory = { foreground = 'green', attributes = ['italic'] }\n[style.typo]\nforeground = 'red'\n",
+        "[display]\ncolumn_spacing = 99\n",
+    ] {
+        fs::write(config_dir.join("themes/custom.toml"), invalid_theme)
+            .expect("write malformed theme");
+        let output = lx_command(&home_dir)
+            .env_remove("NO_COLOR")
+            .env("CLICOLOR_FORCE", "1")
+            .args(["-al"])
+            .arg(&directory)
+            .output()
+            .expect("list despite malformed theme");
+        assert!(output.status.success());
+        assert!(
+            !output.stderr.is_empty(),
+            "invalid theme should produce a diagnostic"
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("38;2;155;227;237mfolder"),
+            "config overrides lost after theme failure: {stdout:?}"
+        );
+        assert!(
+            !stdout.contains("\x1b[3;38;2;155;227;237mfolder"),
+            "invalid theme applied partially"
+        );
+        assert_eq!(
+            without_ansi(&stdout)
+                .lines()
+                .next()
+                .expect("header")
+                .split_whitespace()
+                .collect::<Vec<_>>(),
+            ["Name", "Size", "Owner", "Modified", "Permissions"]
+        );
+    }
+    fs::remove_file(config_dir.join("themes/custom.toml")).expect("remove theme");
+    let missing = lx_command(&home_dir)
+        .args(["-l"])
+        .arg(&directory)
+        .output()
+        .expect("list despite missing theme");
+    assert!(missing.status.success());
+    assert!(!missing.stderr.is_empty());
+    fs::write(&config_path, "theme = '../escape'\n").expect("set invalid theme name");
+    let traversal = lx_command(&home_dir)
+        .args(["-l"])
+        .arg(&directory)
+        .output()
+        .expect("reject path theme name");
+    assert!(traversal.status.success());
+    assert!(!traversal.stderr.is_empty());
     fs::remove_dir_all(temp_dir).expect("remove test directory");
 }

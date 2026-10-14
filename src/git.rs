@@ -1,5 +1,3 @@
-use crate::config::{GitColorConfig, parse_color};
-use colored::Colorize;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::io;
@@ -30,18 +28,15 @@ impl GitStatus {
         }
     }
 
-    pub(crate) fn format(self, width: usize, colors: &GitColorConfig) -> String {
-        let color = match self {
-            Self::Clean => &colors.clean,
-            Self::Modified => &colors.modified,
-            Self::Staged => &colors.staged,
-            Self::Untracked => &colors.untracked,
-            Self::Conflict => &colors.conflict,
-            Self::Mixed => &colors.mixed,
-        };
-        format!("{:<width$}", self.badge())
-            .color(parse_color(color))
-            .to_string()
+    pub(crate) fn style_role(self) -> &'static str {
+        match self {
+            Self::Clean => "git.clean",
+            Self::Modified => "git.modified",
+            Self::Staged => "git.staged",
+            Self::Untracked => "git.untracked",
+            Self::Conflict => "git.conflict",
+            Self::Mixed => "git.mixed",
+        }
     }
 
     fn from_codes(codes: [u8; 2]) -> Self {
