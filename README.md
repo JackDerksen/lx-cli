@@ -129,12 +129,12 @@ lx -r --depth 2
 
 # Skip Git-ignored entries (combine with Git badges if desired)
 lx -r --git-ignore
-lx -lrG --depth 2 --git-ignore
+lx -lrg --depth 2 --git-ignore
 
 # Show Git status beside entries (also works with -l, -1, -c, and -r)
 lx --git
-lx -G
-lx -lrG src
+lx -g
+lx -lrg src
 
 # Show only directories or only files
 lx -d
@@ -159,7 +159,7 @@ lx /path/to/directory
 
 - `-l`, `--long`: Use a long listing format with detailed file information
 - `--total-size`: Use recursive directory contents totals in the Size column and for size sorting; scans all descendants
-- `-G`, `--git`: Show Git status for entries and summarise changes beneath directories
+- `-g`, `--git`: Show Git status for entries and summarise changes beneath directories
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
 - `-f`, `--files`: Show only files (not available with `-r`)
 - `-d`, `--directories`: Show only directories (not available with `-r`)
@@ -174,9 +174,9 @@ lx /path/to/directory
 - `--depth <LEVELS>`: Limit tree traversal; `0` shows only the root, `1` adds its immediate children (requires `-r`)
 - `--git-ignore`: Omit Git-ignored entries and the repository's `.git` metadata (requires `-r`)
 
-Tree controls work with both short (`-r`) and long (`-lr`) output, alongside sorting, `-a`, exclusions, and `-G`. Without `--depth`, traversal is unlimited. The displayed tree stops at the depth limit and omits excluded directories. Directory contents totals and Git badges still include descendants beyond the displayed depth and beneath excluded directories. When contents totals are disabled or unused, directories beyond the depth limit or excluded from the tree are not opened by lx.
+Tree controls work with both short (`-r`) and long (`-lr`) output, alongside sorting, `-a`, exclusions, and `-g`. Without `--depth`, traversal is unlimited. The displayed tree stops at the depth limit and omits excluded directories. Directory contents totals and Git badges still include descendants beyond the displayed depth and beneath excluded directories. When contents totals are disabled or unused, directories beyond the depth limit or excluded from the tree are not opened by lx.
 
-`--git-ignore` uses Git's ignore rules, including nested `.gitignore` files, exceptions, `.git/info/exclude`, and global exclusions. Tracked files remain visible even when an ignore pattern matches them. It also hides the repository's `.git` entry with `-a`, works in Git worktrees, and does not enable status badges unless `-G` is supplied. Outside a Git working tree it has no effect; inside one, Git must be available. An explicitly selected entry remains visible as the tree root even if ignored, but ignored directories are not expanded.
+`--git-ignore` uses Git's ignore rules, including nested `.gitignore` files, exceptions, `.git/info/exclude`, and global exclusions. Tracked files remain visible even when an ignore pattern matches them. It also hides the repository's `.git` entry with `-a`, works in Git worktrees, and does not enable status badges unless `-g` is supplied. Outside a Git working tree it has no effect; inside one, Git must be available. An explicitly selected entry remains visible as the tree root even if ignored, but ignored directories are not expanded.
 
 `-l` and `-1` are treated as separate display modes, so they cannot be combined together. `-c` is only available for short output, so it cannot be combined with `-l`, `-1`, or `-r`. Short flags can still be clustered in the usual Unix style, so combinations like `-la`, `-lr`, and `-alr` work as expected.
 
