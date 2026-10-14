@@ -26,7 +26,10 @@ fn format_short_entry(entry: &FileEntry, config: &Config) -> String {
 }
 
 fn entry_width(entry: &FileEntry, config: &Config) -> usize {
-    filename_width(entry, config) + if entry.git_status.is_some() { 2 } else { 0 }
+    filename_width(entry, config)
+        + entry.git_status.map_or(0, |status| {
+            UnicodeWidthStr::width(status.badge(config.icons.enabled)) + 1
+        })
 }
 
 fn filename_width(entry: &FileEntry, config: &Config) -> usize {

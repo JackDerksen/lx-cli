@@ -116,7 +116,11 @@ impl<'config> Renderer<'config> {
     }
 
     pub fn git(&self, status: GitStatus, long: bool) -> Cell {
-        self.cell(status.style_role(), status.badge(), long.then_some("git"))
+        self.cell(
+            status.style_role(),
+            status.badge(self.config.icons.enabled),
+            long.then_some("git"),
+        )
     }
 
     pub fn field(&self, entry: &FileEntry, field: &str, modified: &str) -> Cell {

@@ -5,7 +5,7 @@
 # theme = "my-theme"
 
 [icons]
-# Enable automatic Nerd Font icons (default: false).
+# Enable automatic Nerd Font icons and Git status icons (default: false).
 # System folders get dedicated icons; other directories use a generic folder.
 # Includes ~/.config, ~/.cache, ~/.local, ~/.Trash, and ~/.ssh (shown with -a).
 # Common development folders such as .git, src, target, tests, and docs also

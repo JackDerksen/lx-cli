@@ -810,6 +810,81 @@ fn git_status_works_across_display_modes_and_worktrees() {
         }
     }
 
+    let config_path = home_dir.join(".config/lx/config");
+    let configuration = fs::read_to_string(&config_path).expect("read icon config");
+    fs::write(
+        &config_path,
+        configuration.replacen("[icons]", "[icons]\nenabled = true", 1),
+    )
+    .expect("enable Git icons with empty file icon overrides");
+    for flags in [
+        vec!["--git"],
+        vec!["--git", "-c"],
+        vec!["--git", "-1"],
+        vec!["--git", "-r"],
+        vec!["--git", "-l"],
+        vec!["--git", "-lr"],
+    ] {
+        let output = lx_command(&home_dir)
+            .args(&flags)
+            .arg(repository.join("src"))
+            .output()
+            .expect("render Git icons");
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for (icon, filename) in [
+            ("-", "clean"),
+            ("\u{f040}", "modified name"),
+            ("\u{f058}", "staged"),
+        ] {
+            let line = stdout
+                .lines()
+                .find(|line| line.contains(filename))
+                .expect("Git status row");
+            assert!(line.contains(icon), "missing icon for {flags:?}: {line}");
+        }
+        if flags.contains(&"-l") {
+            let mut lines = stdout.lines();
+            let header = lines.next().expect("Git header");
+            let position = header.find("Name").expect("Name column");
+            for line in lines {
+                let filename_position = line.rfind("  ").expect("column spacing") + 2;
+                assert_eq!(
+                    unicode_width::UnicodeWidthStr::width(&line[..filename_position]),
+                    position,
+                    "Git icon changed column alignment: {line}"
+                );
+            }
+        }
+    }
+    let summary = lx_command(&home_dir)
+        .args(["--git", "-1"])
+        .arg(&repository)
+        .output()
+        .expect("render Git directory icons");
+    let stdout = String::from_utf8_lossy(&summary.stdout);
+    assert!(stdout.lines().any(|line| line == "\u{f074} src"));
+    assert!(stdout.lines().any(|line| line == "\u{f059} new"));
+    let coloured = lx_command(&home_dir)
+        .env_remove("NO_COLOR")
+        .env("CLICOLOR_FORCE", "1")
+        .args(["--git", "-1"])
+        .arg(repository.join("src/clean"))
+        .output()
+        .expect("render themed Git icon");
+    assert!(String::from_utf8_lossy(&coloured.stdout).starts_with("\x1b[94m-\x1b[0m "));
+    for flags in [vec!["--plain"], vec!["--zero"]] {
+        let output = lx_command(&home_dir)
+            .args(flags)
+            .arg(repository.join("src/staged"))
+            .output()
+            .expect("render plain output with icons enabled");
+        assert!(output.status.success());
+        assert!(!String::from_utf8_lossy(&output.stdout).contains('\u{f058}'));
+    }
+    fs::write(&config_path, configuration).expect("restore letter Git badges");
+
     let worktree = temp_dir.join("worktree");
     git_command(
         &repository,

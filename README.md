@@ -183,16 +183,18 @@ When stdout is a pipe or redirected to a file, the default listing and `-1` prin
 
 `--plain` and `--zero` cannot be combined with each other or with `-l`, `-c`, `-r`, or `--git`. Directory listings emit entry names relative to the listed directory; a single-file listing retains the supplied path. To pass files from another directory to a command, run the pipeline inside that directory, for example `(cd src && lx --zero | xargs -0 -I {} printf '%s\n' '{}')`. Empty listings emit no separators. A consumer that closes early, such as `head`, causes lx to exit quietly and successfully.
 
-With `--git`, short listings show a single-character status badge before each entry and long listings gain a `Git` column:
+With `--git`, short listings show a status badge before each entry and long listings gain a `Git` column:
 
-| Badge | Meaning | Default colour |
-| --- | --- | --- |
-| `-` | No changes reported by Git (including ignored entries) | Light grey |
-| `M` | Unstaged changes, including deletions | Yellow |
-| `S` | Changes ready to commit, including additions and renames | Green |
-| `?` | Not yet tracked by Git | Blue |
-| `!` | An unresolved merge conflict | Red |
-| `*` | Both staged and unstaged changes, or a directory containing different states | Orange |
+When `[icons] enabled = true`, changed Git entries use Nerd Font icons. Clean entries always show `-`; with icons disabled, all statuses use the original characters. Both forms share the same `style.git` colours and font attributes. Explicit file icon overrides do not change Git badges.
+
+| Badge | Icon | Meaning | Default colour |
+| --- | --- | --- | --- |
+| `-` | `-` | No changes reported by Git (including ignored entries) | Light grey |
+| `M` |  Pencil | Unstaged changes, including deletions | Yellow |
+| `S` |  Circled check | Changes ready to commit, including additions and renames | Green |
+| `?` |  Circled question | Not yet tracked by Git | Blue |
+| `!` |  Warning | An unresolved merge conflict | Red |
+| `*` |  Shuffle | Both staged and unstaged changes, or a directory containing different states | Orange |
 
 Customise badges with semantic styles in your configuration or theme:
 
@@ -203,7 +205,7 @@ modified = { foreground = "#FFDA84", attributes = ["bold"] }
 staged = { foreground = "#BCF092" }
 ```
 
-Directories summarise changes anywhere beneath them, including deleted files. Any descendant conflict makes the directory show `!`. These summaries include hidden and excluded descendants, so they describe repository state independently of listing filters.
+Directories summarise changes anywhere beneath them, including deleted files. Any descendant conflict makes the directory show the conflict badge. These summaries include hidden and excluded descendants, so they describe repository state independently of listing filters.
 
 Git status is opt-in and uses one Git status query for the repository containing the target, including linked worktrees. It requires the `git` executable. Outside a repository, `--git` leaves the listing unchanged; if Git fails, lx reports a warning and prints the normal listing. Submodules receive the containing repository's summary rather than a separate status scan of their contents. Untracked files are enumerated to distinguish them from ignored files, which can add latency in large repositories.
 

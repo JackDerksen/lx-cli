@@ -17,15 +17,16 @@ pub enum GitStatus {
 }
 
 impl GitStatus {
-    pub(crate) fn badge(self) -> &'static str {
-        match self {
-            Self::Clean => "-",
-            Self::Modified => "M",
-            Self::Staged => "S",
-            Self::Untracked => "?",
-            Self::Conflict => "!",
-            Self::Mixed => "*",
-        }
+    pub(crate) fn badge(self, icons_enabled: bool) -> &'static str {
+        let (letter, icon) = match self {
+            Self::Clean => ("-", "-"),
+            Self::Modified => ("M", "\u{f040}"),  // Pencil
+            Self::Staged => ("S", "\u{f058}"),    // Circled check
+            Self::Untracked => ("?", "\u{f059}"), // Circled question
+            Self::Conflict => ("!", "\u{f071}"),  // Warning
+            Self::Mixed => ("*", "\u{f074}"),     // Shuffle
+        };
+        if icons_enabled { icon } else { letter }
     }
 
     pub(crate) fn style_role(self) -> &'static str {

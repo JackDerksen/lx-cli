@@ -36,7 +36,12 @@ pub fn calculate_column_widths(
 
     for field in fields {
         let width = match field.as_str() {
-            "git" => usize::from(entries.iter().any(|entry| entry.git_status.is_some())),
+            "git" => entries
+                .iter()
+                .filter_map(|entry| entry.git_status)
+                .map(|status| UnicodeWidthStr::width(status.badge(config.icons.enabled)))
+                .max()
+                .unwrap_or(0),
             "nlink" => entries
                 .iter()
                 .map(|e| e.nlink.to_string().len())
