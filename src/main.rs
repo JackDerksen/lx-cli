@@ -1,4 +1,5 @@
 use lx_cli::config::load_config;
+use lx_cli::directory_size::DirectorySizeCache;
 use lx_cli::filter::EntryFilter;
 use lx_cli::formatter::{
     TreeOptions, format_long, format_one_per_line, format_plain, format_recursive, format_short,
@@ -25,6 +26,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse_args();
     let mut config = load_config();
     let sort = args.sort_options(config.display.default_sort());
+    let mut directory_sizes = (args.total_size && config.display.uses_sizes(args.long, sort))
+        .then(DirectorySizeCache::default);
     let filter = EntryFilter::new(args.files, args.directories, args.exclude);
 
     let target_path = args.target.as_path();
@@ -53,7 +56,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             MetadataMode::Basic
         };
-        let entries = filter.apply(read_target(target_path, args.show_hidden, metadata_mode)?);
+        let mut entries = filter.apply(read_target(target_path, args.show_hidden, metadata_mode)?);
+        if let Some(sizes) = &mut directory_sizes {
+            sizes.apply(&mut entries);
+        }
         format_plain(entries, target_path, sort, args.zero)?;
         return Ok(());
     }
@@ -102,6 +108,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             &TreeOptions {
                 show_hidden: args.show_hidden,
                 use_long_format: args.long,
+                total_size: args.total_size,
                 depth: args.depth,
                 ignored: repository.as_ref().filter(|_| args.git_ignore),
             },
@@ -116,6 +123,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             MetadataMode::Basic
         };
         let mut entries = filter.apply(read_target(target_path, args.show_hidden, metadata_mode)?);
+        if let Some(sizes) = &mut directory_sizes {
+            sizes.apply(&mut entries);
+        }
         if let Some(repository) = &git {
             repository.annotate(target_path, &mut entries)?;
         }

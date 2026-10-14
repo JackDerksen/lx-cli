@@ -120,6 +120,7 @@ fn build_file_entry(
         is_executable: metadata.is_file() && (mode & 0o111) != 0,
         mode,
         size: metadata.len(),
+        size_incomplete: false,
         modified: metadata
             .modified()
             .unwrap_or(std::time::SystemTime::UNIX_EPOCH),

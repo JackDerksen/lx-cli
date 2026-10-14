@@ -150,6 +150,7 @@ impl<'config> Renderer<'config> {
             }
             "size" => {
                 let text = entry.format_size();
+                let text = text.strip_suffix('?').unwrap_or(&text);
                 let (number, unit) = text.split_at(text.len() - 1);
                 let scale = match unit {
                     "B" => "bytes",
@@ -162,6 +163,9 @@ impl<'config> Renderer<'config> {
                     unit,
                     &self.style(&format!("size.{scale}.unit"), Some(field)),
                 );
+                if entry.size_incomplete {
+                    cell.append("?", &self.style("punctuation", Some(field)));
+                }
                 cell
             }
             "owner" | "group" => {

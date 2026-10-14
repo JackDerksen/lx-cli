@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::directory_size::DirectorySizeCache;
 use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
 use crate::formatter::long::{
@@ -16,6 +17,7 @@ use std::path::Path;
 pub struct TreeOptions<'a> {
     pub show_hidden: bool,
     pub use_long_format: bool,
+    pub total_size: bool,
     pub depth: Option<usize>,
     pub ignored: Option<&'a GitRepository>,
 }
@@ -55,6 +57,16 @@ pub fn format_recursive(
         return Ok(());
     }
 
+    let mut directory_sizes = (options.total_size
+        && config.display.uses_sizes(options.use_long_format, sort))
+    .then(DirectorySizeCache::default);
+    if git.is_some() || options.ignored.is_some() {
+        root.full_path = path.canonicalize()?;
+    }
+    if let Some(sizes) = &mut directory_sizes {
+        sizes.apply(std::slice::from_mut(&mut root));
+    }
+
     let uses_icons = !options.use_long_format && config.icons.has_icons();
     let default_sort = if options.use_long_format {
         DefaultSort::TypeThenName
@@ -70,7 +82,8 @@ pub fn format_recursive(
         git,
         options,
     );
-    let tree_entries = renderer.collect(path, metadata_mode)?;
+    let tree_entries =
+        renderer.collect(&root.full_path, metadata_mode, directory_sizes.as_mut())?;
 
     if options.use_long_format {
         print_nested_long_tree(&root, &tree_entries, config)?;

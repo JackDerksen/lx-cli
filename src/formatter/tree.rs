@@ -1,3 +1,4 @@
+use crate::directory_size::DirectorySizeCache;
 use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
 use crate::formatter::TreeOptions;
@@ -43,7 +44,12 @@ impl<'a> TreeRenderer<'a> {
         }
     }
 
-    pub fn collect(&self, path: &Path, metadata_mode: MetadataMode) -> io::Result<Vec<TreeEntry>> {
+    pub fn collect(
+        &self,
+        path: &Path,
+        metadata_mode: MetadataMode,
+        directory_sizes: Option<&mut DirectorySizeCache>,
+    ) -> io::Result<Vec<TreeEntry>> {
         let mut tree_entries = Vec::new();
         let canonical_path = self
             .git
@@ -57,6 +63,7 @@ impl<'a> TreeRenderer<'a> {
             "",
             self.options.depth,
             &mut tree_entries,
+            directory_sizes,
         )?;
         Ok(tree_entries)
     }
@@ -68,6 +75,7 @@ impl<'a> TreeRenderer<'a> {
         prefix: &str,
         remaining_depth: Option<usize>,
         tree_entries: &mut Vec<TreeEntry>,
+        mut directory_sizes: Option<&mut DirectorySizeCache>,
     ) -> io::Result<()> {
         if remaining_depth == Some(0)
             || self
@@ -90,6 +98,9 @@ impl<'a> TreeRenderer<'a> {
                 entry.git_status = Some(repository.status(&entry.full_path));
             }
         }
+        if let Some(sizes) = &mut directory_sizes {
+            sizes.apply(&mut entries);
+        }
         sort_entries_with_default(&mut entries, self.sort, self.default_sort);
 
         for (index, entry) in entries.iter().enumerate() {
@@ -108,6 +119,7 @@ impl<'a> TreeRenderer<'a> {
                     &child_prefix,
                     remaining_depth.map(|depth| depth - 1),
                     tree_entries,
+                    directory_sizes.as_deref_mut(),
                 )?;
             }
         }

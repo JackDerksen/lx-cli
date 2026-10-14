@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod config;
+pub mod directory_size;
 pub mod file_entry;
 pub mod filter;
 pub mod formatter;

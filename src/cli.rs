@@ -25,6 +25,12 @@ pub struct Args {
     pub long: bool,
 
     #[arg(
+        long,
+        help = "Use directory contents totals for sizes and size sorting (scans all descendants)"
+    )]
+    pub total_size: bool,
+
+    #[arg(
         short = 'g',
         long,
         help = "Show Git status, including changes beneath directories"

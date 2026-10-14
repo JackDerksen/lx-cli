@@ -107,7 +107,7 @@ datetime_format = "%-d %b %H:%M"
 # - nlink: Number of hard links
 # - owner: File owner name
 # - group: File group name
-# - size: File size (human-readable)
+# - size: File size or directory contents total (more human-readable, but MUCH slower!)
 # - modified: Last modified date and time
 #
 # Default order (keeps tree names at the right edge in recursive long output):

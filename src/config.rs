@@ -248,6 +248,11 @@ impl IconConfig {
 }
 
 impl DisplayConfig {
+    pub fn uses_sizes(&self, long: bool, sort: SortOptions) -> bool {
+        sort.field == Some(SortField::Size)
+            || (long && self.long_format_fields.iter().any(|field| field == "size"))
+    }
+
     pub(crate) fn long_format_fields(&self) -> Vec<String> {
         self.long_format_fields
             .iter()

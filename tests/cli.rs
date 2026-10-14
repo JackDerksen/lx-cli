@@ -136,7 +136,7 @@ fn automatic_icons_recognise_system_folders_and_respect_global_overrides() {
                     .expect("header")
                     .split_whitespace()
                     .collect::<Vec<_>>(),
-                ["Permissions", "Size", "Owner", "Modified", "Name"]
+                ["Permissions", "Size", "Modified", "Name"]
             );
             assert!(stdout.contains("\u{f0c82} Documents"));
         }
@@ -631,15 +631,41 @@ icon = "T"
 #[test]
 fn recursive_listing_reports_unreadable_directories() {
     let temp_dir = create_temp_dir("recursive-permissions");
-    let blocked_dir = temp_dir.join("blocked");
-    fs::create_dir(&blocked_dir).expect("create blocked directory");
+    let listing = temp_dir.join("listing");
+    let blocked_dir = listing.join("blocked");
+    fs::create_dir_all(&blocked_dir).expect("create blocked directory");
     fs::set_permissions(&blocked_dir, fs::Permissions::from_mode(0o000))
         .expect("make directory unreadable");
 
     let output = lx_command(&temp_dir)
-        .args(["-r", temp_dir.to_str().expect("UTF-8 temp path")])
+        .arg("-r")
+        .arg(&listing)
         .output()
         .expect("run lx");
+
+    for arguments in [vec!["-l"], vec!["-lr", "--depth", "0"]] {
+        let metadata = lx_command(&temp_dir)
+            .args(arguments)
+            .arg(&listing)
+            .output()
+            .expect("list metadata without scanning unreadable descendants");
+        assert!(metadata.status.success());
+        assert!(metadata.stderr.is_empty());
+        assert!(!metadata.stdout.contains(&b'?'));
+    }
+    for arguments in [vec!["-l"], vec!["-lr", "--depth", "0"]] {
+        let totals = lx_command(&temp_dir)
+            .args(arguments)
+            .arg("--total-size")
+            .arg(&listing)
+            .output()
+            .expect("list incomplete totals");
+        assert!(totals.status.success());
+        assert!(
+            String::from_utf8_lossy(&totals.stdout).contains("0B?"),
+            "unreadable descendants must mark the total as incomplete"
+        );
+    }
 
     fs::set_permissions(&blocked_dir, fs::Permissions::from_mode(0o700))
         .expect("restore directory permissions");

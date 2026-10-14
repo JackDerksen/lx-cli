@@ -158,6 +158,7 @@ lx /path/to/directory
 ## Flags
 
 - `-l`, `--long`: Use a long listing format with detailed file information
+- `--total-size`: Use recursive directory contents totals in the Size column and for size sorting; scans all descendants
 - `-G`, `--git`: Show Git status for entries and summarise changes beneath directories
 - `-a`, `--all`: Show all files, including hidden ones (starting with `.`)
 - `-f`, `--files`: Show only files (not available with `-r`)
@@ -173,7 +174,7 @@ lx /path/to/directory
 - `--depth <LEVELS>`: Limit tree traversal; `0` shows only the root, `1` adds its immediate children (requires `-r`)
 - `--git-ignore`: Omit Git-ignored entries and the repository's `.git` metadata (requires `-r`)
 
-Tree controls work with both short (`-r`) and long (`-lr`) output, alongside sorting, `-a`, exclusions, and `-G`. Without `--depth`, traversal is unlimited. Directories beyond the depth limit or excluded from the tree are not opened by lx. Git badges still summarise all changes beneath a directory, including changes beyond the displayed depth.
+Tree controls work with both short (`-r`) and long (`-lr`) output, alongside sorting, `-a`, exclusions, and `-G`. Without `--depth`, traversal is unlimited. The displayed tree stops at the depth limit and omits excluded directories. Directory contents totals and Git badges still include descendants beyond the displayed depth and beneath excluded directories. When contents totals are disabled or unused, directories beyond the depth limit or excluded from the tree are not opened by lx.
 
 `--git-ignore` uses Git's ignore rules, including nested `.gitignore` files, exceptions, `.git/info/exclude`, and global exclusions. Tracked files remain visible even when an ignore pattern matches them. It also hides the repository's `.git` entry with `-a`, works in Git worktrees, and does not enable status badges unless `-G` is supplied. Outside a Git working tree it has no effect; inside one, Git must be available. An explicitly selected entry remains visible as the tree root even if ignored, but ignored directories are not expanded.
 
@@ -210,6 +211,18 @@ Directories summarise changes anywhere beneath them, including deleted files. An
 Git status is opt-in and uses one Git status query for the repository containing the target, including linked worktrees. It requires the `git` executable. Outside a repository, `--git` leaves the listing unchanged; if Git fails, lx reports a warning and prints the normal listing. Submodules receive the containing repository's summary rather than a separate status scan of their contents. Untracked files are enumerated to distinguish them from ignored files, which can add latency in large repositories.
 
 Symlinks display as `name -> target` in human-readable listings, using the target exactly as stored in the link. Missing targets and link loops add a `[broken]` marker. Long listings show the link's own metadata, with `l` as the permissions prefix. Directory links are displayed as links and are never followed by tree traversal, including when supplied as the listing target; append `/` or pass a path inside the linked directory to list its contents. Sorting, filtering, and Git badges refer to the link itself. Links count as files for `-f` and are excluded by `-d`.
+
+Directory sizes default to the directory's own filesystem metadata size, without scanning its contents. Request contents totals for a single listing with `--total-size`:
+
+```bash
+lx -l --total-size /path/to/directory
+lx -lr --total-size --depth 0 /path/to/directory # Show just the directory and its full total
+lx -l --total-size -s size desc # Sort by contents size, largest first
+```
+
+Contents totals include hidden, excluded, and Git-ignored descendants. Empty directories show `0B`. Directory metadata is not added; regular files and symlinks contribute their own lengths, symlink targets are never followed, and each hard-linked name is counted separately. These totals describe content lengths rather than allocated disk space. A trailing `?` marks an incomplete total when an entry cannot be read or the total overflows.
+
+With `--total-size`, totals are calculated when the Size column is displayed or sorting uses `size`, including plain output. Size sorting uses the displayed totals. Calculating a full total requires scanning every descendant, which can make listings of home directories or other large trees *extremely* slow. Totals are reused within each listing but are not cached between runs.
 
 ## Configuration
 

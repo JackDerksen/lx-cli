@@ -28,6 +28,7 @@ pub struct FileEntry {
     pub is_hidden: bool,
     pub mode: u32,
     pub size: u64,
+    pub size_incomplete: bool,
     pub modified: SystemTime,
     pub owner: String,
     pub group: String,
@@ -193,7 +194,7 @@ impl FileEntry {
 
     pub fn format_size(&self) -> String {
         let size = self.size;
-        if size < 1024 {
+        let mut formatted = if size < 1024 {
             format!("{}B", size)
         } else if size < 1024 * 1024 {
             format!("{:.1}K", size as f64 / 1024.0)
@@ -201,7 +202,11 @@ impl FileEntry {
             format!("{:.1}M", size as f64 / (1024.0 * 1024.0))
         } else {
             format!("{:.1}G", size as f64 / (1024.0 * 1024.0 * 1024.0))
+        };
+        if self.size_incomplete {
+            formatted.push('?');
         }
+        formatted
     }
 
     pub fn format_modified_parts(&self, datetime_format: &str) -> Vec<DateTimePart> {
