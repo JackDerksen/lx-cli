@@ -4,9 +4,12 @@ use crate::formatter::render::{Renderer, push_spaces};
 use crate::formatter::{filename_width, print_line};
 use crate::sort::{SortOptions, sort_entries};
 use chrono::format::Item;
+use chrono::{DateTime, FixedOffset};
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::io::{self, Write};
+use std::mem::MaybeUninit;
+use std::time::SystemTime;
 use unicode_width::UnicodeWidthStr;
 
 pub fn format_long(
@@ -177,6 +180,34 @@ fn print_long_rows(
     Ok(())
 }
 
+/// Converts to local time with the C library, which honours `TZ` like `ls`.
+///
+/// chrono's own `Local` needs its `clock` feature, which links CoreFoundation on macOS and
+/// adds about a millisecond to every launch.
+fn local_datetime(time: SystemTime) -> DateTime<FixedOffset> {
+    let (seconds, nanoseconds) = match time.duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(duration) => (duration.as_secs() as i64, duration.subsec_nanos()),
+        Err(error) => {
+            let before = error.duration();
+            match before.subsec_nanos() {
+                0 => (-(before.as_secs() as i64), 0),
+                nanoseconds => (-(before.as_secs() as i64) - 1, 1_000_000_000 - nanoseconds),
+            }
+        }
+    };
+    let utc = DateTime::from_timestamp(seconds, nanoseconds).unwrap_or_default();
+    let mut local = MaybeUninit::<libc::tm>::uninit();
+    let time = seconds as libc::time_t;
+    // SAFETY: both pointers are valid; `localtime_r` initialises `local` when it succeeds.
+    let offset = if unsafe { libc::localtime_r(&time, local.as_mut_ptr()) }.is_null() {
+        0
+    } else {
+        // SAFETY: checked above that `localtime_r` succeeded.
+        unsafe { local.assume_init() }.tm_gmtoff as i32
+    };
+    utc.with_timezone(&FixedOffset::east_opt(offset).unwrap_or(FixedOffset::east_opt(0).unwrap()))
+}
+
 /// Formats every entry's date, padding each numeric or text component to a shared width.
 fn format_modified_entries(entries: &[FileEntry], datetime_items: &[Item<'_>]) -> Vec<String> {
     #[derive(Clone, Copy, PartialEq)]
@@ -198,7 +229,7 @@ fn format_modified_entries(entries: &[FileEntry], datetime_items: &[Item<'_>]) -
     let mut text = String::new();
     let mut ends = Vec::with_capacity(entries.len() * datetime_items.len());
     for entry in entries {
-        let datetime: chrono::DateTime<chrono::Local> = entry.modified.into();
+        let datetime = local_datetime(entry.modified);
         for item in datetime_items {
             let _ = write!(
                 text,
