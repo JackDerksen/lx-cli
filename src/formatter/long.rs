@@ -5,42 +5,34 @@ use crate::formatter::{filename_width, print_line};
 use crate::sort::{SortOptions, sort_entries};
 use chrono::format::Item;
 use std::collections::HashMap;
-use std::io;
+use std::io::{self, Write};
 use unicode_width::UnicodeWidthStr;
 
 pub fn format_long(
+    out: &mut dyn Write,
     mut entries: Vec<FileEntry>,
     config: &Config,
     sort: SortOptions,
 ) -> io::Result<()> {
     sort_entries(&mut entries, sort);
-
-    print_long_entries(&entries, config, "")
-}
-
-pub fn print_long_entries(entries: &[FileEntry], config: &Config, prefix: &str) -> io::Result<()> {
     if entries.is_empty() {
         return Ok(());
     }
-
-    let layout = LongLayout::new(entries, None, config);
-    if config.display.long_format_titles {
-        print_long_titles(config, prefix, &layout)?;
-    }
-    print_long_rows(entries, config, prefix, &layout, None)
+    print_long_entries(out, &entries, None, config)
 }
 
-/// Long-format rows with tree branches drawn inside the Name column.
-pub fn print_long_entries_with_filename_prefixes(
+/// Prints titles and rows; tree branches, when given, are drawn inside the Name column.
+pub fn print_long_entries(
+    out: &mut dyn Write,
     entries: &[FileEntry],
-    filename_prefixes: &[String],
+    filename_prefixes: Option<&[String]>,
     config: &Config,
 ) -> io::Result<()> {
-    let layout = LongLayout::new(entries, Some(filename_prefixes), config);
+    let layout = LongLayout::new(entries, filename_prefixes, config);
     if config.display.long_format_titles {
-        print_long_titles(config, "", &layout)?;
+        print_long_titles(out, config, &layout)?;
     }
-    print_long_rows(entries, config, "", &layout, Some(filename_prefixes))
+    print_long_rows(out, entries, config, &layout, filename_prefixes)
 }
 
 /// Columns, their widths, and each entry's formatted date, computed once per listing.
@@ -133,9 +125,9 @@ impl<'config> LongLayout<'config> {
 }
 
 fn print_long_rows(
+    out: &mut dyn Write,
     entries: &[FileEntry],
     config: &Config,
-    prefix: &str,
     layout: &LongLayout<'_>,
     filename_prefixes: Option<&[String]>,
 ) -> io::Result<()> {
@@ -164,11 +156,13 @@ fn print_long_rows(
             };
             output_parts.push(cell.padded(width, right));
         }
-        print_line(format_args!(
-            "{}{}",
-            renderer.paint("tree", prefix),
-            output_parts.join(&" ".repeat(config.display.column_spacing))
-        ))?;
+        print_line(
+            out,
+            format_args!(
+                "{}",
+                output_parts.join(&" ".repeat(config.display.column_spacing))
+            ),
+        )?;
     }
     Ok(())
 }
@@ -215,7 +209,11 @@ fn format_datetime_part(part: &DateTimePart, width: usize) -> String {
     }
 }
 
-fn print_long_titles(config: &Config, prefix: &str, layout: &LongLayout<'_>) -> io::Result<()> {
+fn print_long_titles(
+    out: &mut dyn Write,
+    config: &Config,
+    layout: &LongLayout<'_>,
+) -> io::Result<()> {
     let fields = layout.fields;
     let titles: Vec<String> = fields
         .iter()
@@ -238,11 +236,13 @@ fn print_long_titles(config: &Config, prefix: &str, layout: &LongLayout<'_>) -> 
         })
         .collect();
 
-    print_line(format_args!(
-        "{}{}",
-        config.theme.style("tree").paint(prefix),
-        titles.join(&" ".repeat(config.display.column_spacing))
-    ))
+    print_line(
+        out,
+        format_args!(
+            "{}",
+            titles.join(&" ".repeat(config.display.column_spacing))
+        ),
+    )
 }
 
 fn pad_to_display_width(value: String, width: usize) -> String {

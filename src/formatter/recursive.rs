@@ -2,14 +2,14 @@ use crate::config::Config;
 use crate::directory_size::DirectorySizeCache;
 use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
-use crate::formatter::long::print_long_entries_with_filename_prefixes;
+use crate::formatter::long::print_long_entries;
 use crate::formatter::print_line;
 use crate::formatter::tree::{TreeEntry, TreeRenderer};
 use crate::formatter::{format_long, format_one_per_line, format_short_entry};
 use crate::git::GitRepository;
 use crate::reader::{MetadataMode, read_entry, read_target};
 use crate::sort::{DefaultSort, SortOptions};
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 
 pub struct TreeOptions<'a> {
@@ -21,6 +21,7 @@ pub struct TreeOptions<'a> {
 }
 
 pub fn format_recursive(
+    out: &mut dyn Write,
     path: &Path,
     config: &Config,
     options: &TreeOptions<'_>,
@@ -40,9 +41,9 @@ pub fn format_recursive(
         }
 
         if options.use_long_format {
-            format_long(entries, config, sort)?;
+            format_long(out, entries, config, sort)?;
         } else {
-            format_one_per_line(entries, config, sort)?;
+            format_one_per_line(out, entries, config, sort)?;
         }
         return Ok(());
     }
@@ -82,16 +83,17 @@ pub fn format_recursive(
         renderer.collect(&root.full_path, metadata_mode, directory_sizes.as_mut())?;
 
     if options.use_long_format {
-        print_nested_long_tree(&root, &tree_entries, config)?;
+        print_nested_long_tree(out, &root, &tree_entries, config)?;
     } else {
-        print_tree_root(&root, config)?;
-        print_short_tree(&tree_entries, config)?;
+        print_tree_root(out, &root, config)?;
+        print_short_tree(out, &tree_entries, config)?;
     }
 
     Ok(())
 }
 
 fn print_nested_long_tree(
+    out: &mut dyn Write,
     root: &FileEntry,
     tree_entries: &[TreeEntry],
     config: &Config,
@@ -110,23 +112,30 @@ fn print_nested_long_tree(
             .map(|tree_entry| format!("{} ", tree_entry.branch)),
     );
 
-    print_long_entries_with_filename_prefixes(&display_entries, &filename_prefixes, config)
+    print_long_entries(out, &display_entries, Some(&filename_prefixes), config)
 }
 
-fn print_tree_root(root: &FileEntry, config: &Config) -> io::Result<()> {
-    print_line(format_args!(
-        "{}",
-        format_short_entry(&display_entry(root), config)
-    ))
+fn print_tree_root(out: &mut dyn Write, root: &FileEntry, config: &Config) -> io::Result<()> {
+    print_line(
+        out,
+        format_args!("{}", format_short_entry(&display_entry(root), config)),
+    )
 }
 
-fn print_short_tree(tree_entries: &[TreeEntry], config: &Config) -> io::Result<()> {
+fn print_short_tree(
+    out: &mut dyn Write,
+    tree_entries: &[TreeEntry],
+    config: &Config,
+) -> io::Result<()> {
     for tree_entry in tree_entries {
-        print_line(format_args!(
-            "{} {}",
-            config.theme.style("tree").paint(&tree_entry.branch),
-            format_short_entry(&display_entry(&tree_entry.entry), config)
-        ))?;
+        print_line(
+            out,
+            format_args!(
+                "{} {}",
+                config.theme.style("tree").paint(&tree_entry.branch),
+                format_short_entry(&display_entry(&tree_entry.entry), config)
+            ),
+        )?;
     }
     Ok(())
 }

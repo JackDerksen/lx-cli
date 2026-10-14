@@ -8,7 +8,7 @@ use lx_cli::formatter::{
 use lx_cli::git::GitRepository;
 use lx_cli::reader::reported_errors;
 use lx_cli::{Args, MetadataMode, read_target};
-use std::io::{self, IsTerminal, Write};
+use std::io::{self, BufWriter, IsTerminal, Write};
 
 fn main() {
     let result = run();
@@ -38,6 +38,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let filter = EntryFilter::new(args.files, args.directories, args.exclude);
 
     let target_path = args.target.as_path();
+    // One buffer for the whole listing; std's stdout would otherwise write each line separately.
+    let mut out = BufWriter::with_capacity(64 * 1024, io::stdout().lock());
 
     if !target_path.exists() && !target_path.is_symlink() {
         return Err(io::Error::new(
@@ -67,8 +69,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(sizes) = &mut directory_sizes {
             sizes.apply(&mut entries);
         }
-        format_plain(entries, target_path, sort, args.zero)?;
-        return Ok(());
+        format_plain(&mut out, entries, target_path, sort, args.zero)?;
+        return Ok(out.flush()?);
     }
 
     let repository = if args.git || args.git_ignore {
@@ -102,6 +104,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.recursive {
         format_recursive(
+            &mut out,
             target_path,
             &config,
             &TreeOptions {
@@ -130,15 +133,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         if args.long {
-            format_long(entries, &config, sort)?;
+            format_long(&mut out, entries, &config, sort)?;
         } else if args.one_per_line {
-            format_one_per_line(entries, &config, sort)?;
+            format_one_per_line(&mut out, entries, &config, sort)?;
         } else if args.compact {
-            format_short_compact(entries, &config, sort)?;
+            format_short_compact(&mut out, entries, &config, sort)?;
         } else {
-            format_short(entries, &config, sort)?;
+            format_short(&mut out, entries, &config, sort)?;
         }
     }
 
-    Ok(())
+    Ok(out.flush()?)
 }

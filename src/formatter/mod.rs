@@ -39,8 +39,7 @@ fn filename_width(entry: &FileEntry, config: &Config) -> usize {
         + usize::from(!icon.is_empty())
 }
 
-fn print_line(arguments: std::fmt::Arguments<'_>) -> io::Result<()> {
-    let mut stdout = io::stdout().lock();
-    stdout.write_fmt(arguments)?;
-    stdout.write_all(b"\n")
+fn print_line(out: &mut dyn Write, arguments: std::fmt::Arguments<'_>) -> io::Result<()> {
+    out.write_fmt(arguments)?;
+    out.write_all(b"\n")
 }
