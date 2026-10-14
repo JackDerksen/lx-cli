@@ -3,7 +3,7 @@ use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
 use crate::formatter::TreeOptions;
 use crate::git::GitRepository;
-use crate::reader::{MetadataMode, read_directory_entries};
+use crate::reader::{MetadataMode, read_directory_entries, report_error};
 use crate::sort::{DefaultSort, SortOptions, sort_entries_with_default};
 use std::io;
 use std::path::Path;
@@ -85,7 +85,17 @@ impl<'a> TreeRenderer<'a> {
         {
             return Ok(());
         }
-        let mut entries = read_directory_entries(path, self.options.show_hidden, metadata_mode)?;
+        let mut entries =
+            match read_directory_entries(path, self.options.show_hidden, metadata_mode) {
+                Ok(entries) => entries,
+                Err(error) => {
+                    report_error(format_args!(
+                        "cannot open directory '{}': {error}",
+                        path.display()
+                    ));
+                    return Ok(());
+                }
+            };
         entries.retain(|entry| {
             self.filter.includes(entry)
                 && !self

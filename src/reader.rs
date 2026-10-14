@@ -5,6 +5,21 @@ use std::fs;
 use std::io;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static REPORTED_ERRORS: AtomicBool = AtomicBool::new(false);
+
+/// Reports a problem with one entry on stderr and keeps listing; the exit status
+/// later reflects it, as with `ls`.
+pub(crate) fn report_error(message: std::fmt::Arguments<'_>) {
+    eprintln!("lx: {message}");
+    REPORTED_ERRORS.store(true, Ordering::Relaxed);
+}
+
+/// Whether any entry could not be read during this run.
+pub fn reported_errors() -> bool {
+    REPORTED_ERRORS.load(Ordering::Relaxed)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MetadataMode {
@@ -44,8 +59,17 @@ pub fn read_directory_entries(
     let mut cache = UserGroupCache::default();
     let target_path = std::path::absolute(target_path)?;
 
-    for entry in fs::read_dir(target_path)? {
-        let entry = entry?;
+    for entry in fs::read_dir(&target_path)? {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) => {
+                report_error(format_args!(
+                    "cannot read directory '{}': {error}",
+                    target_path.display()
+                ));
+                continue;
+            }
+        };
         let file_name = entry.file_name();
 
         if !show_hidden && is_hidden(&file_name) {
@@ -53,7 +77,16 @@ pub fn read_directory_entries(
         }
 
         let full_path = entry.path();
-        let metadata = entry.metadata()?;
+        let metadata = match entry.metadata() {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                report_error(format_args!(
+                    "cannot access '{}': {error}",
+                    full_path.display()
+                ));
+                continue;
+            }
+        };
         let entry = build_file_entry(file_name, &full_path, &metadata, metadata_mode, &mut cache)?;
 
         entries.push(entry);
@@ -90,7 +123,13 @@ fn build_file_entry(
     cache: &mut UserGroupCache,
 ) -> io::Result<FileEntry> {
     let symlink = if metadata.is_symlink() {
-        let target = fs::read_link(full_path)?;
+        let target = fs::read_link(full_path).unwrap_or_else(|error| {
+            report_error(format_args!(
+                "cannot read symbolic link '{}': {error}",
+                full_path.display()
+            ));
+            std::path::PathBuf::new()
+        });
         // Permission errors cannot tell us whether a target is broken.
         let is_broken = fs::metadata(full_path).is_err_and(|error| {
             matches!(

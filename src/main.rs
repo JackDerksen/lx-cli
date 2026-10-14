@@ -6,11 +6,18 @@ use lx_cli::formatter::{
     format_short_compact,
 };
 use lx_cli::git::GitRepository;
+use lx_cli::reader::reported_errors;
 use lx_cli::{Args, MetadataMode, read_target};
-use std::io::{self, IsTerminal};
+use std::io::{self, IsTerminal, Write};
 
 fn main() {
-    if let Err(error) = run() {
+    let result = run();
+    if result.is_ok() && reported_errors() {
+        // Entries that could not be read were reported as they were found.
+        let _ = io::stdout().flush();
+        std::process::exit(1);
+    }
+    if let Err(error) = result {
         if error
             .downcast_ref::<io::Error>()
             .is_some_and(|error| error.kind() == io::ErrorKind::BrokenPipe)

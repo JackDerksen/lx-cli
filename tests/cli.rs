@@ -690,6 +690,9 @@ fn recursive_listing_reports_unreadable_directories() {
     let listing = temp_dir.join("listing");
     let blocked_dir = listing.join("blocked");
     fs::create_dir_all(&blocked_dir).expect("create blocked directory");
+    fs::create_dir_all(listing.join("readable/nested")).expect("create readable directory");
+    fs::write(listing.join("readable/nested/deep-file"), "content").expect("write nested file");
+    fs::write(listing.join("sibling-file"), "content").expect("write sibling file");
     fs::set_permissions(&blocked_dir, fs::Permissions::from_mode(0o000))
         .expect("make directory unreadable");
 
@@ -718,7 +721,7 @@ fn recursive_listing_reports_unreadable_directories() {
             .expect("list incomplete totals");
         assert!(totals.status.success());
         assert!(
-            String::from_utf8_lossy(&totals.stdout).contains("0B?"),
+            String::from_utf8_lossy(&totals.stdout).contains("B?"),
             "unreadable descendants must mark the total as incomplete"
         );
     }
@@ -733,6 +736,23 @@ fn recursive_listing_reports_unreadable_directories() {
         stderr.contains("Permission denied"),
         "stderr should report the directory error: {stderr}"
     );
+    assert!(
+        stderr.contains("lx: cannot open directory '") && stderr.contains("blocked'"),
+        "stderr should name the unreadable directory: {stderr}"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for name in [
+        "blocked/",
+        "readable/",
+        "nested/",
+        "deep-file",
+        "sibling-file",
+    ] {
+        assert!(
+            stdout.contains(name),
+            "the rest of the tree should still be listed, missing {name}: {stdout}"
+        );
+    }
 }
 
 fn git_command(directory: &Path, arguments: &[&str]) {
