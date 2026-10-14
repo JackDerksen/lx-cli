@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::{Config, LongField};
 use crate::file_entry::FileEntry;
 use crate::git::GitStatus;
 use crate::theme::Style;
@@ -123,14 +123,15 @@ impl<'config> Renderer<'config> {
         )
     }
 
-    pub fn field(&self, entry: &FileEntry, field: &str, modified: &str) -> Cell {
+    pub fn field(&self, entry: &FileEntry, field: LongField, modified: &str) -> Cell {
+        let name = Some(field.name());
         match field {
-            "filename" => self.filename(entry, true),
-            "git" => entry
+            LongField::Filename => self.filename(entry, true),
+            LongField::Git => entry
                 .git_status
                 .map(|status| self.git(status, true))
                 .unwrap_or_default(),
-            "permissions" => {
+            LongField::Permissions => {
                 let mut cell = Cell::default();
                 for (index, character) in entry.format_permissions().chars().enumerate() {
                     let role = if index == 0 {
@@ -144,27 +145,26 @@ impl<'config> Renderer<'config> {
                             _ => "permissions.absent",
                         }
                     };
-                    cell.append(&character.to_string(), &self.style(role, Some(field)));
+                    cell.append(&character.to_string(), &self.style(role, name));
                 }
                 cell
             }
-            "size" => {
+            LongField::Size => {
                 let size = entry.format_size();
                 let scale = size.unit.name();
-                let mut cell =
-                    self.cell(&format!("size.{scale}.number"), &size.number, Some(field));
+                let mut cell = self.cell(&format!("size.{scale}.number"), &size.number, name);
                 cell.append(
                     size.unit.suffix(),
-                    &self.style(&format!("size.{scale}.unit"), Some(field)),
+                    &self.style(&format!("size.{scale}.unit"), name),
                 );
                 if size.incomplete {
-                    cell.append("?", &self.style("punctuation", Some(field)));
+                    cell.append("?", &self.style("punctuation", name));
                 }
                 cell
             }
-            "owner" | "group" => {
+            LongField::Owner | LongField::Group => {
                 let identity = CurrentIdentity::get();
-                let role = if field == "owner" {
+                let role = if field == LongField::Owner {
                     if entry.user_id == 0 {
                         "users.user_root"
                     } else if entry.user_id == identity.user_id {
@@ -181,25 +181,24 @@ impl<'config> Renderer<'config> {
                 };
                 self.cell(
                     role,
-                    if field == "owner" {
+                    if field == LongField::Owner {
                         &entry.owner
                     } else {
                         &entry.group
                     },
-                    Some(field),
+                    name,
                 )
             }
-            "nlink" => self.cell(
+            LongField::Nlink => self.cell(
                 if entry.nlink > 1 {
                     "links.multiple"
                 } else {
                     "links.normal"
                 },
                 &entry.nlink.to_string(),
-                Some(field),
+                name,
             ),
-            "modified" => self.cell("date", modified, Some(field)),
-            _ => Cell::default(),
+            LongField::Modified => self.cell("date", modified, name),
         }
     }
 }

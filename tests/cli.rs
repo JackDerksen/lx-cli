@@ -1364,3 +1364,39 @@ write = { attributes = ["italic"], background = "#222125" }
     assert!(traversal.status.success());
     assert!(!traversal.stderr.is_empty());
 }
+
+#[test]
+fn unknown_long_format_fields_are_reported_and_columns_stay_aligned() {
+    let temp_dir = create_temp_dir("long-format-fields");
+    let config_path = temp_dir.join(".config/lx/config.toml");
+    fs::create_dir_all(config_path.parent().expect("config parent"))
+        .expect("create config directory");
+    fs::write(
+        &config_path,
+        "[display]\nlong_format_fields = [\"permissions\", \"bogus\", \"links\", \"filename\"]\n",
+    )
+    .expect("write config");
+    let listing = temp_dir.join("listing");
+    fs::create_dir(&listing).expect("create listing directory");
+    fs::write(listing.join("file"), "content").expect("write file");
+
+    let output = lx_command(&temp_dir)
+        .arg("-l")
+        .arg(&listing)
+        .output()
+        .expect("run lx with an unknown long field");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stderr}");
+    assert!(
+        stderr.contains("unknown display.long_format_fields entry \"bogus\""),
+        "{stderr}"
+    );
+    assert!(!stderr.contains("\"links\""), "links is an alias: {stderr}");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2, "{stdout}");
+    assert_eq!(lines[0], "Permissions  Links  Name");
+    assert!(lines[1].starts_with("-rw"), "{stdout}");
+    assert_eq!(&lines[1][11..20], "      1  ", "links column: {stdout}");
+    assert_eq!(&lines[1][20..], "file");
+}

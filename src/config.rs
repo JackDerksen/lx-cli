@@ -142,8 +142,9 @@ pub struct DisplayConfig {
     pub datetime_format: String,
     #[serde(default)]
     pub tree: TreeConfig,
-    #[serde(default = "default_long_format_fields")]
-    pub long_format_fields: Vec<String>,
+    /// Validated in `resolve_config` so unknown names become diagnostics.
+    #[serde(skip_deserializing, default = "default_long_format_fields")]
+    pub long_format_fields: Vec<LongField>,
     #[serde(default = "default_long_format_titles")]
     pub long_format_titles: bool,
     #[serde(default)]
@@ -193,22 +194,82 @@ fn default_compact_max_rows() -> usize {
     10
 }
 
+const DEFAULT_DATETIME_FORMAT: &str = "%-d %b %H:%M";
+
 fn default_datetime_format() -> String {
-    "%-d %b %H:%M".to_string()
+    DEFAULT_DATETIME_FORMAT.to_string()
 }
 
 fn default_tree_style() -> String {
     "ascii".to_string()
 }
 
-fn default_long_format_fields() -> Vec<String> {
+fn default_long_format_fields() -> Vec<LongField> {
     vec![
-        "permissions".to_string(),
-        "size".to_string(),
-        "modified".to_string(),
-        "git".to_string(),
-        "filename".to_string(),
+        LongField::Permissions,
+        LongField::Size,
+        LongField::Modified,
+        LongField::Git,
+        LongField::Filename,
     ]
+}
+
+/// A column in long output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LongField {
+    Git,
+    Permissions,
+    Nlink,
+    Owner,
+    Group,
+    Size,
+    Modified,
+    Filename,
+}
+
+impl LongField {
+    /// Parses a configured field name; `Ok(None)` marks the ignored legacy `icon` field.
+    fn parse(name: &str) -> Result<Option<Self>, ()> {
+        Ok(Some(match name {
+            "git" => Self::Git,
+            "permissions" => Self::Permissions,
+            "nlink" | "links" => Self::Nlink,
+            "owner" => Self::Owner,
+            "group" => Self::Group,
+            "size" => Self::Size,
+            "modified" => Self::Modified,
+            "filename" => Self::Filename,
+            "icon" => return Ok(None),
+            _ => return Err(()),
+        }))
+    }
+
+    /// The field name used by legacy per-column style settings.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Git => "git",
+            Self::Permissions => "permissions",
+            Self::Nlink => "nlink",
+            Self::Owner => "owner",
+            Self::Group => "group",
+            Self::Size => "size",
+            Self::Modified => "modified",
+            Self::Filename => "filename",
+        }
+    }
+
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Git => "Git",
+            Self::Permissions => "Permissions",
+            Self::Nlink => "Links",
+            Self::Owner => "Owner",
+            Self::Group => "Group",
+            Self::Size => "Size",
+            Self::Modified => "Modified",
+            Self::Filename => "Name",
+        }
+    }
 }
 
 fn default_long_format_titles() -> bool {
@@ -250,15 +311,7 @@ impl IconConfig {
 impl DisplayConfig {
     pub fn uses_sizes(&self, long: bool, sort: SortOptions) -> bool {
         sort.field == Some(SortField::Size)
-            || (long && self.long_format_fields.iter().any(|field| field == "size"))
-    }
-
-    pub(crate) fn long_format_fields(&self) -> Vec<String> {
-        self.long_format_fields
-            .iter()
-            .filter(|field| field.as_str() != "icon")
-            .cloned()
-            .collect()
+            || (long && self.long_format_fields.contains(&LongField::Size))
     }
 
     pub fn default_sort(&self) -> SortOptions {
@@ -324,10 +377,31 @@ fn resolve_config(
     }
     theme.apply_legacy(&document, diagnostics);
     theme.apply_document(&document, true, diagnostics);
+    let mut display = settings.display;
+    if let Some(fields) = document
+        .get("display")
+        .and_then(|display| display.get("long_format_fields"))
+    {
+        match fields.clone().try_into::<Vec<String>>() {
+            Ok(names) => {
+                display.long_format_fields = names
+                    .iter()
+                    .filter_map(|name| {
+                        LongField::parse(name).unwrap_or_else(|()| {
+                            diagnostics
+                                .push(format!("unknown display.long_format_fields entry {name:?}"));
+                            None
+                        })
+                    })
+                    .collect();
+            }
+            Err(error) => diagnostics.push(format!("display.long_format_fields: {error}")),
+        }
+    }
     Ok(Config {
         theme,
         icons: settings.icons,
-        display: settings.display,
+        display,
     })
 }
 

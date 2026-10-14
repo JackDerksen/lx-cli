@@ -226,7 +226,7 @@ With `--total-size`, totals are calculated when the Size column is displayed or 
 
 ## Configuration
 
-The default layout keeps icons off and uses underlined titles in long output. Columns appear as Permissions, Size, Modified, and Name; `--git` adds Git immediately before Name. Dates use `%-d %b %H:%M` (for example, `13 Oct 15:14`), and compact output wraps after ten rows. Existing configuration settings override these defaults. Add `"owner"` before `"size"` in `[display] long_format_fields` to show the Owner column before Size.
+The default layout keeps icons off and uses underlined titles in long output. Columns appear as Permissions, Size, Modified, and Name; `--git` adds Git immediately before Name. Dates use `%-d %b %H:%M` (for example, `13 Oct 15:14`), and compact output wraps after ten rows. Existing configuration settings override these defaults. Add `"owner"` before `"size"` in `[display] long_format_fields` to show the Owner column before Size. Available fields are `permissions`, `nlink` (or `links`), `owner`, `group`, `size`, `modified`, `git`, and `filename`; lx reports unknown fields and leaves them out.
 
 Configuration uses TOML at `~/.config/lx/config.toml`. The older extensionless `~/.config/lx/config` is still read when `config.toml` is absent. See [`config.example`](config.example) for layout and icon options.
 

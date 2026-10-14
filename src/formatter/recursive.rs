@@ -2,9 +2,7 @@ use crate::config::Config;
 use crate::directory_size::DirectorySizeCache;
 use crate::file_entry::FileEntry;
 use crate::filter::EntryFilter;
-use crate::formatter::long::{
-    calculate_column_widths_with_filename_prefixes, print_long_entries_with_filename_prefixes,
-};
+use crate::formatter::long::print_long_entries_with_filename_prefixes;
 use crate::formatter::print_line;
 use crate::formatter::tree::{TreeEntry, TreeRenderer};
 use crate::formatter::{format_long, format_one_per_line, format_short_entry};
@@ -114,20 +112,7 @@ fn print_nested_long_tree(
             .map(|tree_entry| format!("{} ", tree_entry.branch)),
     );
 
-    let fields = config.display.long_format_fields();
-    let widths = calculate_column_widths_with_filename_prefixes(
-        &display_entries,
-        &filename_prefixes,
-        &fields,
-        config,
-    );
-    print_long_entries_with_filename_prefixes(
-        &display_entries,
-        &filename_prefixes,
-        config,
-        &fields,
-        &widths,
-    )
+    print_long_entries_with_filename_prefixes(&display_entries, &filename_prefixes, config)
 }
 
 fn print_tree_root(root: &FileEntry, config: &Config) -> io::Result<()> {

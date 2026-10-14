@@ -1,4 +1,4 @@
-use lx_cli::config::load_config;
+use lx_cli::config::{LongField, load_config};
 use lx_cli::directory_size::DirectorySizeCache;
 use lx_cli::filter::EntryFilter;
 use lx_cli::formatter::{
@@ -83,22 +83,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     };
     let git = repository.as_ref().filter(|_| args.git);
     if git.is_some() {
-        if !config
-            .display
-            .long_format_fields
-            .iter()
-            .any(|field| field == "git")
-        {
-            config
-                .display
-                .long_format_fields
-                .insert(0, "git".to_string());
+        if !config.display.long_format_fields.contains(&LongField::Git) {
+            config.display.long_format_fields.insert(0, LongField::Git);
         }
     } else {
         config
             .display
             .long_format_fields
-            .retain(|field| field != "git");
+            .retain(|&field| field != LongField::Git);
     }
 
     if args.recursive {
