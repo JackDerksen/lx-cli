@@ -1,6 +1,6 @@
+use crate::dir_scan::scan;
 use crate::file_entry::FileEntry;
 use std::collections::HashMap;
-use std::fs::{self, ReadDir};
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Copy, Default)]
@@ -19,22 +19,36 @@ impl ContentsSize {
     }
 }
 
+/// A directory being totalled: its files are summed on entry, and its subdirectories
+/// wait their turn on the traversal stack.
 struct DirectoryFrame {
     path: PathBuf,
-    entries: Option<ReadDir>,
+    subdirectories: std::vec::IntoIter<PathBuf>,
     size: ContentsSize,
 }
 
 impl DirectoryFrame {
     fn new(path: PathBuf) -> Self {
-        let entries = fs::read_dir(&path).ok();
+        let mut size = ContentsSize::default();
+        let mut subdirectories = Vec::new();
+        let scanned = scan(
+            &path,
+            |_| true,
+            |entry| match entry.and_then(|entry| Ok((entry.name, entry.stat?))) {
+                Ok((name, stat)) if stat.is_dir() => subdirectories.push(path.join(name)),
+                Ok((_, stat)) if stat.is_file() || stat.is_symlink() => size.add(ContentsSize {
+                    bytes: stat.size,
+                    incomplete: false,
+                }),
+                Ok(_) => {}
+                Err(_) => size.incomplete = true,
+            },
+        );
+        size.incomplete |= scanned.is_err();
         Self {
             path,
-            size: ContentsSize {
-                incomplete: entries.is_none(),
-                ..ContentsSize::default()
-            },
-            entries,
+            subdirectories: subdirectories.into_iter(),
+            size,
         }
     }
 }
@@ -64,37 +78,20 @@ impl DirectorySizeCache {
         // An explicit stack avoids overflowing the call stack on deep directories.
         let mut stack = vec![DirectoryFrame::new(path.to_path_buf())];
         while let Some(frame) = stack.last_mut() {
-            match frame.entries.as_mut().and_then(Iterator::next) {
-                Some(Ok(entry)) => {
-                    let child_path = entry.path();
-                    match fs::symlink_metadata(&child_path) {
-                        Ok(metadata) if metadata.is_dir() => {
-                            if let Some(size) = self.totals.get(&child_path) {
-                                frame.size.add(*size);
-                            } else {
-                                stack.push(DirectoryFrame::new(child_path));
-                            }
-                        }
-                        Ok(metadata) if metadata.is_file() || metadata.is_symlink() => {
-                            frame.size.add(ContentsSize {
-                                bytes: metadata.len(),
-                                incomplete: false,
-                            });
-                        }
-                        Ok(_) => {}
-                        Err(_) => frame.size.incomplete = true,
-                    }
+            if let Some(child_path) = frame.subdirectories.next() {
+                if let Some(size) = self.totals.get(&child_path) {
+                    frame.size.add(*size);
+                } else {
+                    stack.push(DirectoryFrame::new(child_path));
                 }
-                Some(Err(_)) => frame.size.incomplete = true,
-                None => {
-                    let completed = stack.pop().expect("directory frame exists");
-                    self.totals.insert(completed.path, completed.size);
-                    if let Some(parent) = stack.last_mut() {
-                        parent.size.add(completed.size);
-                    } else {
-                        return completed.size;
-                    }
-                }
+                continue;
+            }
+            let completed = stack.pop().expect("directory frame exists");
+            self.totals.insert(completed.path, completed.size);
+            if let Some(parent) = stack.last_mut() {
+                parent.size.add(completed.size);
+            } else {
+                return completed.size;
             }
         }
         unreachable!("root directory frame returns its total")
