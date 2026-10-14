@@ -7,14 +7,73 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-fn create_temp_dir(label: &str) -> PathBuf {
+/// A test directory removed on drop, including when the test panics.
+struct TempDir(PathBuf);
+
+impl std::ops::Deref for TempDir {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl AsRef<Path> for TempDir {
+    fn as_ref(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl AsRef<std::ffi::OsStr> for TempDir {
+    fn as_ref(&self) -> &std::ffi::OsStr {
+        self.0.as_os_str()
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        if fs::remove_dir_all(&self.0).is_ok() {
+            return;
+        }
+        // Tests may leave directories unreadable; restore access and retry.
+        fn make_accessible(path: &Path) {
+            let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o700));
+            for entry in fs::read_dir(path).into_iter().flatten().flatten() {
+                if entry.file_type().is_ok_and(|kind| kind.is_dir()) {
+                    make_accessible(&entry.path());
+                }
+            }
+        }
+        make_accessible(&self.0);
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+fn create_temp_dir(label: &str) -> TempDir {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system time before epoch")
         .as_nanos();
     let path = std::env::temp_dir().join(format!("lx-cli-{label}-{unique}"));
     fs::create_dir_all(&path).expect("create temp dir");
-    path
+    TempDir(path)
+}
+
+#[test]
+fn temp_dirs_are_removed_when_a_test_panics() {
+    let path = std::panic::catch_unwind(|| {
+        let temp_dir = create_temp_dir("drop-guard");
+        let blocked = temp_dir.join("blocked");
+        fs::create_dir(&blocked).expect("create blocked directory");
+        fs::write(blocked.join("file"), "content").expect("write file");
+        fs::set_permissions(&blocked, fs::Permissions::from_mode(0o000))
+            .expect("make directory unreadable");
+        std::panic::panic_any(temp_dir.to_path_buf());
+    })
+    .expect_err("closure panics")
+    .downcast::<PathBuf>()
+    .expect("panic carries the temp path");
+    assert!(!path.exists(), "{} should be removed", path.display());
 }
 
 fn lx_command(home_dir: &Path) -> Command {
@@ -225,7 +284,6 @@ fn automatic_icons_recognise_system_folders_and_respect_global_overrides() {
         assert!(!output.stdout.contains(&0x1b));
     }
     assert!(toml::from_str::<lx_cli::config::Config>(include_str!("../config.example")).is_ok());
-    fs::remove_dir_all(temp_dir).expect("remove test directory");
 }
 
 #[test]
@@ -354,7 +412,6 @@ fn path_icons_override_defaults_but_global_icons_still_win() {
                 .any(|line| line == "L documents-link -> Documents")
         );
     }
-    fs::remove_dir_all(temp_dir).expect("remove test directory");
 }
 
 #[test]
@@ -625,7 +682,6 @@ icon = "T"
             .lines()
             .any(|line| line == "main.rs")
     );
-    fs::remove_dir_all(temp_dir).expect("remove test directory");
 }
 
 #[test]
@@ -666,10 +722,6 @@ fn recursive_listing_reports_unreadable_directories() {
             "unreadable descendants must mark the total as incomplete"
         );
     }
-
-    fs::set_permissions(&blocked_dir, fs::Permissions::from_mode(0o700))
-        .expect("restore directory permissions");
-    fs::remove_dir_all(&temp_dir).expect("remove temp dir");
 
     assert!(
         !output.status.success(),
@@ -961,7 +1013,6 @@ fn git_status_works_across_display_modes_and_worktrees() {
     assert!(with_git.status.success());
     assert!(with_git.stderr.is_empty());
     assert_eq!(plain.stdout, with_git.stdout);
-    fs::remove_dir_all(temp_dir).expect("remove test directory");
 }
 
 #[test]
@@ -996,7 +1047,10 @@ fn plain_and_zero_output_preserve_filename_bytes_and_listing_options() {
         // macOS filesystems can require valid UTF-8 filenames.
         Err(error)
             if cfg!(target_os = "macos")
-                && matches!(error.raw_os_error(), Some(libc::EPERM | libc::EINVAL)) =>
+                && matches!(
+                    error.raw_os_error(),
+                    Some(libc::EPERM | libc::EINVAL | libc::EILSEQ)
+                ) =>
         {
             false
         }
@@ -1056,7 +1110,6 @@ fn plain_and_zero_output_preserve_filename_bytes_and_listing_options() {
         .expect("list empty directory");
     assert!(output.status.success());
     assert!(output.stdout.is_empty());
-    fs::remove_dir_all(temp_dir).expect("remove test directory");
 }
 
 #[test]
@@ -1093,7 +1146,6 @@ fn closed_output_exits_quietly_across_display_modes() {
             String::from_utf8_lossy(&output.stderr)
         );
     }
-    fs::remove_dir_all(temp_dir).expect("remove test directory");
 }
 
 fn without_ansi(text: &str) -> String {
@@ -1311,5 +1363,4 @@ write = { attributes = ["italic"], background = "#222125" }
         .expect("reject path theme name");
     assert!(traversal.status.success());
     assert!(!traversal.stderr.is_empty());
-    fs::remove_dir_all(temp_dir).expect("remove test directory");
 }
