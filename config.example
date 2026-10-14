@@ -111,13 +111,12 @@ datetime_format = "%-d %b %H:%M"
 # - modified: Last modified date and time
 #
 # Default order (keeps tree names at the right edge in recursive long output):
-# [permissions, size, owner, modified, git, filename]
+# [permissions, size, modified, git, filename]
 #
 # To customise, list the fields you want in your desired order:
 long_format_fields = [
     "permissions",
     "size",
-    "owner",
     "modified",
     "git",
     "filename",

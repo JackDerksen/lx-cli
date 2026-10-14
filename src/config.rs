@@ -205,7 +205,6 @@ fn default_long_format_fields() -> Vec<String> {
     vec![
         "permissions".to_string(),
         "size".to_string(),
-        "owner".to_string(),
         "modified".to_string(),
         "git".to_string(),
         "filename".to_string(),

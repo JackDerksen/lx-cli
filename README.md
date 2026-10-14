@@ -213,7 +213,7 @@ Symlinks display as `name -> target` in human-readable listings, using the targe
 
 ## Configuration
 
-The default layout keeps icons off and uses underlined titles in long output. Columns appear as Permissions, Size, Owner, Modified, and Name; `--git` adds Git immediately before Name. Dates use `%-d %b %H:%M` (for example, `13 Oct 15:14`), and compact output wraps after ten rows. Existing configuration settings override these defaults.
+The default layout keeps icons off and uses underlined titles in long output. Columns appear as Permissions, Size, Modified, and Name; `--git` adds Git immediately before Name. Dates use `%-d %b %H:%M` (for example, `13 Oct 15:14`), and compact output wraps after ten rows. Existing configuration settings override these defaults. Add `"owner"` before `"size"` in `[display] long_format_fields` to show the Owner column before Size.
 
 Configuration uses TOML at `~/.config/lx/config.toml`. The older extensionless `~/.config/lx/config` is still read when `config.toml` is absent. See [`config.example`](config.example) for layout and icon options.
 
