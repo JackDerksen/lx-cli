@@ -1451,3 +1451,28 @@ fn invalid_datetime_format_is_reported_and_replaced_by_the_default() {
         );
     }
 }
+
+#[test]
+fn recursive_exclusions_do_not_hide_the_requested_root() {
+    let temp_dir = create_temp_dir("recursive-root-exclusion");
+    let listing = temp_dir.join("listing");
+    fs::create_dir_all(listing.join("child")).expect("create listing directory");
+    fs::write(listing.join("visible"), "content").expect("write file");
+    fs::write(listing.join(".hidden"), "content").expect("write hidden file");
+
+    for flags in [vec!["-r", "-a", "-x", ".*"], vec!["-lr", "-a", "-x", ".*"]] {
+        let output = lx_command(&temp_dir)
+            .current_dir(&listing)
+            .args(&flags)
+            .output()
+            .expect("list the current directory recursively");
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("./"), "root should be shown: {stdout}");
+        assert!(
+            stdout.contains("child/") && stdout.contains("visible"),
+            "{stdout}"
+        );
+        assert!(!stdout.contains(".hidden"), "{stdout}");
+    }
+}

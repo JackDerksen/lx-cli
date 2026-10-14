@@ -51,9 +51,7 @@ pub fn format_recursive(
     if let Some(repository) = git {
         root.git_status = Some(repository.status(&path.canonicalize()?));
     }
-    if !filter.includes(&root) {
-        return Ok(());
-    }
+    // Filters apply beneath the root; the directory the user named is always shown.
 
     let mut directory_sizes = (options.total_size
         && config.display.uses_sizes(options.use_long_format, sort))
