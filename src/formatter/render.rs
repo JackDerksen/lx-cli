@@ -45,7 +45,7 @@ impl<'config> Renderer<'config> {
         let style = self.config.theme.style(role);
         field
             .map(|field| self.config.theme.field_style(style, field))
-            .unwrap_or_else(|| style.clone())
+            .unwrap_or(*style)
     }
 
     fn cell(&self, role: &str, text: &str, field: Option<&str>) -> Cell {
@@ -56,7 +56,7 @@ impl<'config> Renderer<'config> {
 
     pub fn filename(&self, entry: &FileEntry, long: bool) -> Cell {
         let theme = &self.config.theme;
-        let mut style = theme.style(entry.style_role()).clone();
+        let mut style = *theme.style(entry.style_role());
         if self.config.display.language_colors && entry.style_role() == "filekinds.regular" {
             if let Some(category) = crate::icon::file_category(
                 entry

@@ -1195,7 +1195,7 @@ fn toml_themes_merge_properties_and_keep_styled_columns_aligned() {
         toml::from_str(include_str!("../themes/default.toml")).expect("default theme");
     assert_eq!(
         builtin.theme.style("filekinds.regular").foreground,
-        Some(colored::Color::TrueColor {
+        Some(lx_cli::theme::Color::TrueColor {
             r: 226,
             g: 226,
             b: 227

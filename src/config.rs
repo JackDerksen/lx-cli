@@ -1,7 +1,6 @@
 use crate::sort::{SortField, SortOptions, SortOrder};
 use crate::theme::Theme;
 use chrono::format::{Item, StrftimeItems};
-use colored::{ColoredString, Colorize};
 use serde::{Deserialize, Deserializer};
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -38,32 +37,7 @@ struct Settings {
     display: DisplayConfig,
 }
 
-/// Terminal font attributes shared by every semantic style.
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum FontStyle {
-    Bold,
-    #[serde(alias = "dim")]
-    Dimmed,
-    Italic,
-    Underline,
-    Strikethrough,
-    Reversed,
-}
-
-pub(crate) fn apply_font_styles(mut text: ColoredString, styles: &[FontStyle]) -> ColoredString {
-    for style in styles {
-        text = match style {
-            FontStyle::Bold => text.bold(),
-            FontStyle::Dimmed => text.dimmed(),
-            FontStyle::Italic => text.italic(),
-            FontStyle::Underline => text.underline(),
-            FontStyle::Strikethrough => text.strikethrough(),
-            FontStyle::Reversed => text.reversed(),
-        };
-    }
-    text
-}
+pub use crate::theme::FontStyle;
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct IconConfig {
