@@ -59,7 +59,7 @@ pub fn calculate_column_widths(
                 .unwrap_or(0),
             "size" => entries
                 .iter()
-                .map(|e| e.format_size().len())
+                .map(|e| e.format_size().to_string().len())
                 .max()
                 .unwrap_or(0),
             "modified" => modified_values

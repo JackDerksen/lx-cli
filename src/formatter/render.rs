@@ -149,21 +149,15 @@ impl<'config> Renderer<'config> {
                 cell
             }
             "size" => {
-                let text = entry.format_size();
-                let text = text.strip_suffix('?').unwrap_or(&text);
-                let (number, unit) = text.split_at(text.len() - 1);
-                let scale = match unit {
-                    "B" => "bytes",
-                    "K" => "kilobytes",
-                    "M" => "megabytes",
-                    _ => "gigabytes",
-                };
-                let mut cell = self.cell(&format!("size.{scale}.number"), number, Some(field));
+                let size = entry.format_size();
+                let scale = size.unit.name();
+                let mut cell =
+                    self.cell(&format!("size.{scale}.number"), &size.number, Some(field));
                 cell.append(
-                    unit,
+                    size.unit.suffix(),
                     &self.style(&format!("size.{scale}.unit"), Some(field)),
                 );
-                if entry.size_incomplete {
+                if size.incomplete {
                     cell.append("?", &self.style("punctuation", Some(field)));
                 }
                 cell

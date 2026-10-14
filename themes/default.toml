@@ -59,6 +59,10 @@ unit = { foreground = "#FFC79E" }
 number = { foreground = "#E2E2E3" }
 unit = { foreground = "#D6D9FC" }
 
+[style.size.terabytes]
+number = { foreground = "#E2E2E3" }
+unit = { foreground = "#F4C2E8" }
+
 [style.users]
 user_root = { foreground = "#FF9DB1" }
 user_you = { foreground = "#E2E2E3" }

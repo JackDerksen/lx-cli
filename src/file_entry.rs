@@ -192,21 +192,24 @@ impl FileEntry {
         }
     }
 
-    pub fn format_size(&self) -> String {
-        let size = self.size;
-        let mut formatted = if size < 1024 {
-            format!("{}B", size)
-        } else if size < 1024 * 1024 {
-            format!("{:.1}K", size as f64 / 1024.0)
-        } else if size < 1024 * 1024 * 1024 {
-            format!("{:.1}M", size as f64 / (1024.0 * 1024.0))
+    pub fn format_size(&self) -> FormattedSize {
+        let (number, unit) = if self.size < 1024 {
+            (self.size.to_string(), SizeUnit::Bytes)
         } else {
-            format!("{:.1}G", size as f64 / (1024.0 * 1024.0 * 1024.0))
+            let mut value = self.size as f64 / 1024.0;
+            let mut unit = SizeUnit::Kilobytes;
+            // Pick the unit after rounding so 1048575 bytes reads 1.0M, not 1024.0K.
+            while (value * 10.0).round() / 10.0 >= 1024.0 && unit != SizeUnit::Terabytes {
+                value /= 1024.0;
+                unit = unit.next();
+            }
+            (format!("{value:.1}"), unit)
         };
-        if self.size_incomplete {
-            formatted.push('?');
+        FormattedSize {
+            number,
+            unit,
+            incomplete: self.size_incomplete,
         }
-        formatted
     }
 
     pub fn format_modified_parts(&self, datetime_format: &str) -> Vec<DateTimePart> {
@@ -229,6 +232,66 @@ impl FileEntry {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SizeUnit {
+    Bytes,
+    Kilobytes,
+    Megabytes,
+    Gigabytes,
+    Terabytes,
+}
+
+impl SizeUnit {
+    fn next(self) -> Self {
+        match self {
+            Self::Bytes => Self::Kilobytes,
+            Self::Kilobytes => Self::Megabytes,
+            Self::Megabytes => Self::Gigabytes,
+            Self::Gigabytes | Self::Terabytes => Self::Terabytes,
+        }
+    }
+
+    pub fn suffix(self) -> &'static str {
+        match self {
+            Self::Bytes => "B",
+            Self::Kilobytes => "K",
+            Self::Megabytes => "M",
+            Self::Gigabytes => "G",
+            Self::Terabytes => "T",
+        }
+    }
+
+    /// The theme role segment, as in `size.<name>.number`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Bytes => "bytes",
+            Self::Kilobytes => "kilobytes",
+            Self::Megabytes => "megabytes",
+            Self::Gigabytes => "gigabytes",
+            Self::Terabytes => "terabytes",
+        }
+    }
+}
+
+/// A human-readable size, kept in parts so renderers can style each one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FormattedSize {
+    pub number: String,
+    pub unit: SizeUnit,
+    /// The size is a lower bound because some contents could not be read.
+    pub incomplete: bool,
+}
+
+impl std::fmt::Display for FormattedSize {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}{}", self.number, self.unit.suffix())?;
+        if self.incomplete {
+            formatter.write_str("?")?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum DateTimePartAlignment {
     Left,
@@ -247,4 +310,55 @@ pub enum FileType {
     Executable,
     Symlink,
     RegularFile,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry_with_size(size: u64) -> FileEntry {
+        FileEntry {
+            path: OsString::from("file"),
+            full_path: PathBuf::from("/file"),
+            filesystem_identity: (0, 0),
+            is_dir: false,
+            is_executable: false,
+            is_hidden: false,
+            mode: FILE_TYPE_REGULAR | 0o644,
+            size,
+            size_incomplete: false,
+            modified: SystemTime::UNIX_EPOCH,
+            owner: String::new(),
+            group: String::new(),
+            user_id: 0,
+            group_id: 0,
+            nlink: 1,
+            git_status: None,
+            symlink: None,
+        }
+    }
+
+    #[test]
+    fn sizes_pick_their_unit_after_rounding() {
+        const KIB: u64 = 1024;
+        for (size, expected) in [
+            (0, "0B"),
+            (1023, "1023B"),
+            (KIB, "1.0K"),
+            (KIB * KIB - 1, "1.0M"),
+            (KIB * KIB, "1.0M"),
+            (KIB * KIB * KIB - 1, "1.0G"),
+            (KIB.pow(4) - 1, "1.0T"),
+            (KIB.pow(4) * 3 / 2, "1.5T"),
+            (KIB.pow(5) * 2, "2048.0T"),
+        ] {
+            assert_eq!(entry_with_size(size).format_size().to_string(), expected);
+        }
+        let mut incomplete = entry_with_size(KIB * 3 / 2);
+        incomplete.size_incomplete = true;
+        let formatted = incomplete.format_size();
+        assert_eq!(formatted.number, "1.5");
+        assert_eq!(formatted.unit, SizeUnit::Kilobytes);
+        assert_eq!(formatted.to_string(), "1.5K?");
+    }
 }

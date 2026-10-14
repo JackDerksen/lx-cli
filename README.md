@@ -274,7 +274,7 @@ Styles accept `foreground`, optional `background`, and `attributes`. Colours sup
 | `style.file_type` | `image`, `video`, `audio`, `archive`, `document`, `source`, `config`, `build`, `temporary` |
 | `style.icons` | `directory`, `executable`, `regular`, `hidden`, `symlink`, `broken_symlink` |
 | `style.permissions` | `type`, `read`, `write`, `execute`, `special`, `absent` |
-| `style.size.bytes`, `.kilobytes`, `.megabytes`, `.gigabytes` | `number`, `unit` |
+| `style.size.bytes`, `.kilobytes`, `.megabytes`, `.gigabytes`, `.terabytes` | `number`, `unit` |
 | `style.users` | `user_root`, `user_you`, `user_other`, `group_root`, `group_yours`, `group_other` |
 | `style.links` | `normal`, `multiple` |
 | `style.git` | `clean`, `modified`, `staged`, `untracked`, `conflict`, `mixed` |
