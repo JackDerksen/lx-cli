@@ -89,12 +89,17 @@ impl GitRepository {
 
         let mut command = Command::new("git");
         command
-            .arg("--no-optional-locks")
-            .arg("-C")
+            .args(["--no-optional-locks", "--literal-pathspecs", "-C"])
             .arg(root)
             .args(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
         if include_ignored {
             command.arg("--ignored=matching");
+        }
+        // Statuses and summaries only ever describe paths beneath the listed directory, so
+        // there is no need for Git to scan the rest of the repository.
+        let scope = directory.strip_prefix(root).unwrap_or(Path::new(""));
+        if !scope.as_os_str().is_empty() {
+            command.arg("--").arg(scope);
         }
         let output = command.output()?;
         if !output.status.success() {
