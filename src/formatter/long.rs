@@ -1,10 +1,11 @@
 use crate::config::{Config, LongField};
-use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry};
-use crate::formatter::render::Renderer;
+use crate::file_entry::FileEntry;
+use crate::formatter::render::{Renderer, push_spaces};
 use crate::formatter::{filename_width, print_line};
 use crate::sort::{SortOptions, sort_entries};
 use chrono::format::Item;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::io::{self, Write};
 use unicode_width::UnicodeWidthStr;
 
@@ -133,20 +134,34 @@ fn print_long_rows(
 ) -> io::Result<()> {
     let fields = layout.fields;
     let renderer = Renderer::new(config);
+    let tree_style = config.theme.style("tree");
+    let separator = " ".repeat(config.display.column_spacing);
+    // One buffer reused for every row.
+    let mut line = String::new();
     for (entry_index, entry) in entries.iter().enumerate() {
-        let mut output_parts = Vec::new();
+        line.clear();
+        let mut first = true;
         for (index, &field) in fields.iter().enumerate() {
             let mut cell = renderer.field(entry, field, &layout.modified[entry_index]);
-            if field == LongField::Filename {
-                let filename_prefix = filename_prefixes
+            let filename_prefix = match field {
+                LongField::Filename => filename_prefixes
                     .and_then(|prefixes| prefixes.get(entry_index))
-                    .map(String::as_str)
-                    .unwrap_or("");
-                cell.width += UnicodeWidthStr::width(filename_prefix);
-                cell.text = format!("{}{}", renderer.paint("tree", filename_prefix), cell.text);
-            }
-            if cell.text.is_empty() {
+                    .map_or("", String::as_str),
+                _ => "",
+            };
+            if cell.text.is_empty() && filename_prefix.is_empty() {
                 continue;
+            }
+            if !first {
+                line.push_str(&separator);
+            }
+            first = false;
+            if !filename_prefix.is_empty() {
+                let mut text = String::with_capacity(filename_prefix.len() + cell.text.len() + 16);
+                tree_style.paint_into(&mut text, filename_prefix);
+                text.push_str(&cell.text);
+                cell.text = text;
+                cell.width += UnicodeWidthStr::width(filename_prefix);
             }
             let right = matches!(field, LongField::Size | LongField::Nlink);
             let width = if right || index < fields.len() - 1 {
@@ -154,59 +169,79 @@ fn print_long_rows(
             } else {
                 cell.width
             };
-            output_parts.push(cell.padded(width, right));
+            cell.write_padded(&mut line, width, right);
         }
-        print_line(
-            out,
-            format_args!(
-                "{}",
-                output_parts.join(&" ".repeat(config.display.column_spacing))
-            ),
-        )?;
+        line.push('\n');
+        out.write_all(line.as_bytes())?;
     }
     Ok(())
 }
 
+/// Formats every entry's date, padding each numeric or text component to a shared width.
 fn format_modified_entries(entries: &[FileEntry], datetime_items: &[Item<'_>]) -> Vec<String> {
-    let parts: Vec<Vec<DateTimePart>> = entries
+    #[derive(Clone, Copy, PartialEq)]
+    enum Alignment {
+        Left,
+        Right,
+        None,
+    }
+    let alignments: Vec<Alignment> = datetime_items
         .iter()
-        .map(|entry| entry.format_modified_parts(datetime_items))
+        .map(|item| match item {
+            Item::Numeric(_, _) => Alignment::Right,
+            Item::Fixed(_) => Alignment::Left,
+            _ => Alignment::None,
+        })
         .collect();
-    let mut widths = vec![0; parts.iter().map(Vec::len).max().unwrap_or(0)];
 
-    for entry_parts in &parts {
-        for (index, part) in entry_parts.iter().enumerate() {
-            if part.alignment == DateTimePartAlignment::None {
-                continue;
-            }
+    // All components go into one buffer; `ends` marks where each finishes.
+    let mut text = String::new();
+    let mut ends = Vec::with_capacity(entries.len() * datetime_items.len());
+    for entry in entries {
+        let datetime: chrono::DateTime<chrono::Local> = entry.modified.into();
+        for item in datetime_items {
+            let _ = write!(
+                text,
+                "{}",
+                datetime.format_with_items(std::iter::once(item))
+            );
+            ends.push(text.len());
+        }
+    }
+    let component = |index: usize| {
+        let start = index.checked_sub(1).map_or(0, |previous| ends[previous]);
+        &text[start..ends[index]]
+    };
 
-            let width = UnicodeWidthStr::width(part.value.as_str());
-            widths[index] = widths[index].max(width);
+    let mut widths = vec![0; datetime_items.len()];
+    for index in 0..ends.len() {
+        let column = index % datetime_items.len();
+        if alignments[column] != Alignment::None {
+            widths[column] = widths[column].max(UnicodeWidthStr::width(component(index)));
         }
     }
 
-    parts
-        .into_iter()
-        .map(|entry_parts| {
-            entry_parts
-                .iter()
-                .enumerate()
-                .map(|(index, part)| format_datetime_part(part, widths[index]))
-                .collect()
+    (0..entries.len())
+        .map(|entry_index| {
+            let mut formatted = String::new();
+            for column in 0..datetime_items.len() {
+                let value = component(entry_index * datetime_items.len() + column);
+                let padding = widths[column].saturating_sub(UnicodeWidthStr::width(value));
+                match alignments[column] {
+                    Alignment::Left => {
+                        formatted.push_str(value);
+                        push_spaces(&mut formatted, padding);
+                    }
+                    Alignment::Right => {
+                        push_spaces(&mut formatted, padding);
+                        formatted.push_str(value);
+                    }
+                    Alignment::None => formatted.push_str(value),
+                }
+            }
+            formatted
         })
         .collect()
-}
-
-fn format_datetime_part(part: &DateTimePart, width: usize) -> String {
-    match part.alignment {
-        DateTimePartAlignment::Left => pad_to_display_width(part.value.clone(), width),
-        DateTimePartAlignment::Right => format!(
-            "{}{}",
-            " ".repeat(width.saturating_sub(UnicodeWidthStr::width(part.value.as_str()))),
-            part.value
-        ),
-        DateTimePartAlignment::None => part.value.clone(),
-    }
 }
 
 fn print_long_titles(
@@ -243,9 +278,4 @@ fn print_long_titles(
             titles.join(&" ".repeat(config.display.column_spacing))
         ),
     )
-}
-
-fn pad_to_display_width(value: String, width: usize) -> String {
-    let padding = width.saturating_sub(UnicodeWidthStr::width(value.as_str()));
-    format!("{value}{}", " ".repeat(padding))
 }

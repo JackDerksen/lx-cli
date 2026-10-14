@@ -15,17 +15,24 @@ pub(super) struct Cell {
 impl Cell {
     fn append(&mut self, text: &str, style: &Style) {
         self.width += UnicodeWidthStr::width(text);
-        self.text.push_str(&style.paint(text));
+        style.paint_into(&mut self.text, text);
     }
 
-    pub fn padded(self, width: usize, right: bool) -> String {
-        let padding = " ".repeat(width.saturating_sub(self.width));
+    /// Appends the cell to `line`, padded to `width` columns on the left or right.
+    pub fn write_padded(&self, line: &mut String, width: usize, right: bool) {
+        let padding = width.saturating_sub(self.width);
         if right {
-            format!("{padding}{}", self.text)
-        } else {
-            format!("{}{padding}", self.text)
+            push_spaces(line, padding);
+        }
+        line.push_str(&self.text);
+        if !right {
+            push_spaces(line, padding);
         }
     }
+}
+
+pub(super) fn push_spaces(line: &mut String, count: usize) {
+    line.extend(std::iter::repeat_n(' ', count));
 }
 
 pub(super) struct Renderer<'config> {
@@ -35,10 +42,6 @@ pub(super) struct Renderer<'config> {
 impl<'config> Renderer<'config> {
     pub fn new(config: &'config Config) -> Self {
         Self { config }
-    }
-
-    pub fn paint(&self, role: &str, text: &str) -> String {
-        self.config.theme.style(role).paint(text)
     }
 
     fn style(&self, role: &str, field: Option<&str>) -> Style {
@@ -133,7 +136,7 @@ impl<'config> Renderer<'config> {
                 .unwrap_or_default(),
             LongField::Permissions => {
                 let mut cell = Cell::default();
-                for (index, character) in entry.format_permissions().chars().enumerate() {
+                for (index, character) in entry.permission_chars().into_iter().enumerate() {
                     let role = if index == 0 {
                         "permissions.type"
                     } else {
@@ -145,18 +148,15 @@ impl<'config> Renderer<'config> {
                             _ => "permissions.absent",
                         }
                     };
-                    cell.append(&character.to_string(), &self.style(role, name));
+                    cell.append(character.encode_utf8(&mut [0; 4]), &self.style(role, name));
                 }
                 cell
             }
             LongField::Size => {
                 let size = entry.format_size();
-                let scale = size.unit.name();
-                let mut cell = self.cell(&format!("size.{scale}.number"), &size.number, name);
-                cell.append(
-                    size.unit.suffix(),
-                    &self.style(&format!("size.{scale}.unit"), name),
-                );
+                let (number_role, unit_role) = size.unit.roles();
+                let mut cell = self.cell(number_role, &size.number, name);
+                cell.append(size.unit.suffix(), &self.style(unit_role, name));
                 if size.incomplete {
                     cell.append("?", &self.style("punctuation", name));
                 }

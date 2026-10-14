@@ -1,7 +1,6 @@
 /// Core data structures (FileEntry and FileType) that represent files and its metadata.
 use crate::config::IconConfig;
 use crate::icon::FileIcon;
-use chrono::format::Item;
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -135,44 +134,34 @@ impl FileEntry {
     }
 
     pub fn format_permissions(&self) -> String {
+        self.permission_chars().iter().collect()
+    }
+
+    /// The `ls -l` permission string as characters, without allocating.
+    pub fn permission_chars(&self) -> [char; 10] {
         let mode = self.mode;
-
-        let file_type = self.file_type_marker();
-
-        // Owner permissions
-        let user_r = if mode & 0o400 != 0 { 'r' } else { '-' };
-        let user_w = if mode & 0o200 != 0 { 'w' } else { '-' };
-        let user_x = match (mode & 0o100 != 0, mode & u32::from(libc::S_ISUID) != 0) {
-            (true, true) => 's',
-            (false, true) => 'S',
+        let flag = |bit: u32, set: char| if mode & bit != 0 { set } else { '-' };
+        let execute = |bit: u32, special: u32, both: char, special_only: char| match (
+            mode & bit != 0,
+            mode & special != 0,
+        ) {
+            (true, true) => both,
+            (false, true) => special_only,
             (true, false) => 'x',
             (false, false) => '-',
         };
-
-        // Group permissions
-        let group_r = if mode & 0o040 != 0 { 'r' } else { '-' };
-        let group_w = if mode & 0o020 != 0 { 'w' } else { '-' };
-        let group_x = match (mode & 0o010 != 0, mode & u32::from(libc::S_ISGID) != 0) {
-            (true, true) => 's',
-            (false, true) => 'S',
-            (true, false) => 'x',
-            (false, false) => '-',
-        };
-
-        // Other permissions
-        let other_r = if mode & 0o004 != 0 { 'r' } else { '-' };
-        let other_w = if mode & 0o002 != 0 { 'w' } else { '-' };
-        let other_x = match (mode & 0o001 != 0, mode & u32::from(libc::S_ISVTX) != 0) {
-            (true, true) => 't',
-            (false, true) => 'T',
-            (true, false) => 'x',
-            (false, false) => '-',
-        };
-
-        format!(
-            "{}{}{}{}{}{}{}{}{}{}",
-            file_type, user_r, user_w, user_x, group_r, group_w, group_x, other_r, other_w, other_x
-        )
+        [
+            self.file_type_marker(),
+            flag(0o400, 'r'),
+            flag(0o200, 'w'),
+            execute(0o100, u32::from(libc::S_ISUID), 's', 'S'),
+            flag(0o040, 'r'),
+            flag(0o020, 'w'),
+            execute(0o010, u32::from(libc::S_ISGID), 's', 'S'),
+            flag(0o004, 'r'),
+            flag(0o002, 'w'),
+            execute(0o001, u32::from(libc::S_ISVTX), 't', 'T'),
+        ]
     }
 
     fn file_type_marker(&self) -> char {
@@ -211,26 +200,6 @@ impl FileEntry {
             incomplete: self.size_incomplete,
         }
     }
-
-    pub fn format_modified_parts(&self, datetime_items: &[Item<'_>]) -> Vec<DateTimePart> {
-        let datetime: chrono::DateTime<chrono::Local> = self.modified.into();
-
-        datetime_items
-            .iter()
-            .map(|item| {
-                let alignment = match item {
-                    Item::Numeric(_, _) => DateTimePartAlignment::Right,
-                    Item::Fixed(_) => DateTimePartAlignment::Left,
-                    _ => DateTimePartAlignment::None,
-                };
-                let value = datetime
-                    .format_with_items(std::iter::once(item))
-                    .to_string();
-
-                DateTimePart { value, alignment }
-            })
-            .collect()
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -262,14 +231,14 @@ impl SizeUnit {
         }
     }
 
-    /// The theme role segment, as in `size.<name>.number`.
-    pub fn name(self) -> &'static str {
+    /// Theme roles for the number and the unit suffix.
+    pub fn roles(self) -> (&'static str, &'static str) {
         match self {
-            Self::Bytes => "bytes",
-            Self::Kilobytes => "kilobytes",
-            Self::Megabytes => "megabytes",
-            Self::Gigabytes => "gigabytes",
-            Self::Terabytes => "terabytes",
+            Self::Bytes => ("size.bytes.number", "size.bytes.unit"),
+            Self::Kilobytes => ("size.kilobytes.number", "size.kilobytes.unit"),
+            Self::Megabytes => ("size.megabytes.number", "size.megabytes.unit"),
+            Self::Gigabytes => ("size.gigabytes.number", "size.gigabytes.unit"),
+            Self::Terabytes => ("size.terabytes.number", "size.terabytes.unit"),
         }
     }
 }
@@ -291,18 +260,6 @@ impl std::fmt::Display for FormattedSize {
         }
         Ok(())
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum DateTimePartAlignment {
-    Left,
-    Right,
-    None,
-}
-
-pub struct DateTimePart {
-    pub value: String,
-    pub alignment: DateTimePartAlignment,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

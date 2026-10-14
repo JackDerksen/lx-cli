@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Write as _;
+use std::hash::{BuildHasherDefault, Hasher};
 use std::io::IsTerminal;
 use std::sync::OnceLock;
 use toml::{Table, Value};
@@ -223,11 +224,35 @@ impl Style {
     }
 }
 
+/// FNV-1a. Role names are short and come from lx and its config, so SipHash's
+/// resistance to crafted keys only costs time on every styled cell.
+struct RoleHasher(u64);
+
+impl Default for RoleHasher {
+    fn default() -> Self {
+        Self(0xcbf2_9ce4_8422_2325)
+    }
+}
+
+impl Hasher for RoleHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.0 = (self.0 ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+}
+
+type RoleMap<V> = HashMap<String, V, BuildHasherDefault<RoleHasher>>;
+
 /// Resolved semantic styles; raw config keys never reach the formatters.
 #[derive(Debug, Clone)]
 pub struct Theme {
-    styles: HashMap<String, Style>,
-    legacy_field_attributes: HashMap<String, FontStyles>,
+    styles: RoleMap<Style>,
+    legacy_field_attributes: RoleMap<FontStyles>,
     plain: Style,
 }
 
@@ -236,8 +261,8 @@ impl Default for Theme {
         let document: Table = toml::from_str(include_str!("../themes/default.toml"))
             .expect("built-in theme must be valid TOML");
         let mut theme = Self {
-            styles: HashMap::new(),
-            legacy_field_attributes: HashMap::new(),
+            styles: RoleMap::default(),
+            legacy_field_attributes: RoleMap::default(),
             plain: Style::default(),
         };
         let mut diagnostics = Vec::new();
