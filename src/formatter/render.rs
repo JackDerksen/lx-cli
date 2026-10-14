@@ -95,7 +95,7 @@ impl<'config> Renderer<'config> {
             } else {
                 "icons.regular"
             };
-            cell.append(&icon, theme.style(role));
+            cell.append(icon, theme.style(role));
             cell.text.push(' ');
             cell.width += 1;
         }

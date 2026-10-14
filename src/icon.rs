@@ -33,8 +33,26 @@ impl IconPattern {
     }
 }
 
+/// Calls `f` with an ASCII-lowercased copy of `name`, on the stack for typical lengths.
+fn with_lowercase<R>(name: &OsStr, f: impl FnOnce(&str) -> Option<R>) -> Option<R> {
+    let name = name.to_str()?;
+    let mut buffer = [0u8; 64];
+    match buffer.get_mut(..name.len()) {
+        Some(lowercase) => {
+            lowercase.copy_from_slice(name.as_bytes());
+            lowercase.make_ascii_lowercase();
+            // ASCII lowercasing keeps valid UTF-8 valid.
+            f(std::str::from_utf8(lowercase).ok()?)
+        }
+        None => f(&name.to_ascii_lowercase()),
+    }
+}
+
 pub(crate) fn file_name_icon(name: &OsStr) -> Option<&'static str> {
-    let name = name.to_str()?.to_ascii_lowercase();
+    with_lowercase(name, lowercase_file_name_icon)
+}
+
+fn lowercase_file_name_icon(name: &str) -> Option<&'static str> {
     let stem = name.split(['.', '-', '_']).next()?;
     let named_icon = match stem {
         "license" | "licence" | "copying" | "copyright" => Some("\u{e60a}"),
@@ -46,7 +64,7 @@ pub(crate) fn file_name_icon(name: &OsStr) -> Option<&'static str> {
     if named_icon.is_some() {
         return named_icon;
     }
-    match name.as_str() {
+    match name {
         "cargo.toml" => return Some("\u{e68b}"),
         "package.json" => return Some("\u{e616}"),
         "pyproject.toml" | "pipfile" => return Some("\u{e606}"),
@@ -113,7 +131,10 @@ pub(crate) fn file_name_icon(name: &OsStr) -> Option<&'static str> {
 }
 
 pub(crate) fn file_category(name: &OsStr) -> Option<&'static str> {
-    let name = name.to_str()?.to_ascii_lowercase();
+    with_lowercase(name, lowercase_file_category)
+}
+
+fn lowercase_file_category(name: &str) -> Option<&'static str> {
     let stem = name.split(['.', '-', '_']).next()?;
 
     match stem {
@@ -125,7 +146,7 @@ pub(crate) fn file_category(name: &OsStr) -> Option<&'static str> {
         _ => {}
     }
 
-    match name.as_str() {
+    match name {
         "cargo.toml"
         | "cargo.lock"
         | "package.json"
@@ -281,18 +302,21 @@ pub enum FileIcon {
 
 impl FileIcon {
     pub fn as_str_custom(&self, config: &IconConfig) -> String {
-        self.configured_icon(config)
-            .unwrap_or(if config.enabled {
-                match self {
-                    FileIcon::Directory => "\u{f024b}",
-                    FileIcon::Executable => "",
-                    FileIcon::Symlink => "",
-                    FileIcon::RegularFile => "",
-                }
-            } else {
-                ""
-            })
-            .to_string()
+        self.icon(config).to_string()
+    }
+
+    /// The configured icon for this type, or the automatic default.
+    pub fn icon<'a>(&self, config: &'a IconConfig) -> &'a str {
+        self.configured_icon(config).unwrap_or(if config.enabled {
+            match self {
+                FileIcon::Directory => "\u{f024b}",
+                FileIcon::Executable => "",
+                FileIcon::Symlink => "",
+                FileIcon::RegularFile => "",
+            }
+        } else {
+            ""
+        })
     }
 
     pub(crate) fn configured_icon<'a>(&self, config: &'a IconConfig) -> Option<&'a str> {

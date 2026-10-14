@@ -35,7 +35,7 @@ fn entry_width(entry: &FileEntry, config: &Config) -> usize {
 fn filename_width(entry: &FileEntry, config: &Config) -> usize {
     let icon = entry.get_icon_custom(&config.icons);
     UnicodeWidthStr::width(entry.display_name().as_ref())
-        + UnicodeWidthStr::width(icon.as_str())
+        + UnicodeWidthStr::width(icon)
         + usize::from(!icon.is_empty())
 }
 

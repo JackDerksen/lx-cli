@@ -57,16 +57,16 @@ impl FileEntry {
         }
     }
 
-    pub fn get_icon_custom(&self, config: &IconConfig) -> String {
+    pub fn get_icon_custom<'a>(&self, config: &'a IconConfig) -> &'a str {
         let file_icon = self.get_file_icon();
         if let Some(icon) = file_icon.configured_icon(config) {
-            return icon.to_string();
+            return icon;
         }
         if let Some(icon) = config.paths.get(&self.filesystem_identity) {
-            return icon.clone();
+            return icon;
         }
         if let Some(rule) = config.patterns.iter().find(|rule| rule.matches(self)) {
-            return rule.icon.clone();
+            return &rule.icon;
         }
         if config.enabled && self.symlink.is_none() {
             let name = self
@@ -80,10 +80,10 @@ impl FileEntry {
                 crate::icon::file_name_icon(name)
             };
             if let Some(icon) = icon {
-                return icon.to_string();
+                return icon;
             }
         }
-        file_icon.as_str_custom(config)
+        file_icon.icon(config)
     }
 
     pub(crate) fn style_role(&self) -> &'static str {
