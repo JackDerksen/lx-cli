@@ -1,8 +1,10 @@
 /// Handles sorting of file entries.
 use crate::file_entry::FileEntry;
+use crate::file_entry::FileType;
 use clap::ValueEnum;
 use serde::Deserialize;
-use std::cmp::Ordering;
+use std::cmp::Reverse;
+use std::time::SystemTime;
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, ValueEnum)]
 #[serde(rename_all = "lowercase")]
@@ -88,31 +90,33 @@ pub fn sort_entries_with_default(
     }
 }
 
-fn sort_by_field(entries: &mut [FileEntry], field: SortField, order: SortOrder) {
-    entries.sort_by(|left, right| compare_entries(left, right, field, order));
+/// One entry's value for the requested field, computed once per entry rather than per comparison.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum FieldKey {
+    Number(u64),
+    Time(SystemTime),
+    Type(FileType),
+    Text(String),
 }
 
-fn compare_entries(
-    left: &FileEntry,
-    right: &FileEntry,
-    field: SortField,
-    order: SortOrder,
-) -> Ordering {
-    let comparison = match field {
-        SortField::Name => entry_name(left).cmp(&entry_name(right)),
-        SortField::Size => left.size.cmp(&right.size),
-        SortField::Modified => left.modified.cmp(&right.modified),
-        SortField::Type => left.get_file_type().cmp(&right.get_file_type()),
-        SortField::Permissions => left.format_permissions().cmp(&right.format_permissions()),
-        SortField::Links => left.nlink.cmp(&right.nlink),
-        SortField::Owner => left.owner.cmp(&right.owner),
-        SortField::Group => left.group.cmp(&right.group),
-    }
-    .then_with(|| entry_name(left).cmp(&entry_name(right)));
-
+fn sort_by_field(entries: &mut [FileEntry], field: SortField, order: SortOrder) {
+    let key = |entry: &FileEntry| {
+        let value = match field {
+            SortField::Name => FieldKey::Text(String::new()),
+            SortField::Size => FieldKey::Number(entry.size),
+            SortField::Modified => FieldKey::Time(entry.modified),
+            SortField::Type => FieldKey::Type(entry.get_file_type()),
+            SortField::Permissions => FieldKey::Text(entry.format_permissions()),
+            SortField::Links => FieldKey::Number(entry.nlink),
+            SortField::Owner => FieldKey::Text(entry.owner.clone()),
+            SortField::Group => FieldKey::Text(entry.group.clone()),
+        };
+        // Ties fall back to the name; descending order reverses both.
+        (value, entry_name(entry))
+    };
     match order {
-        SortOrder::Asc => comparison,
-        SortOrder::Desc => comparison.reverse(),
+        SortOrder::Asc => entries.sort_by_cached_key(key),
+        SortOrder::Desc => entries.sort_by_cached_key(|entry| Reverse(key(entry))),
     }
 }
 
