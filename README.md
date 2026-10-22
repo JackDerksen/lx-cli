@@ -7,7 +7,7 @@ A modern alternative to `ls` with readable formatting, colours, optional icons, 
 - Sorting, filename filters, and plain or NUL-separated output for scripts.
 - Custom themes, columns, date formats, and icons.
 
-![LX long listing compared with the standard ls command](https://github.com/user-attachments/assets/17bf867c-faf7-483b-a7c7-906bd9d5a549)
+<img width="3024" height="1900" alt="CleanShot 2026-10-22 at 5 06 31 PM@2x" src="https://github.com/user-attachments/assets/eaf70c12-a193-41ae-b297-f2fb138af8f3" />
 
 ## Install
 
