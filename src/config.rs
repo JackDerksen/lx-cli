@@ -1,89 +1,104 @@
 use crate::sort::{SortField, SortOptions, SortOrder};
-use colored::Color;
-use serde::Deserialize;
+use crate::theme::Theme;
+use chrono::format::{Item, StrftimeItems};
+use serde::{Deserialize, Deserializer};
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
-use std::path::PathBuf;
+use std::os::unix::fs::MetadataExt;
+use std::path::{Path, PathBuf};
+use toml::Table;
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Config {
-    #[serde(default)]
-    pub colors: ColorConfig,
-    #[serde(default)]
+    pub theme: Theme,
     pub icons: IconConfig,
-    #[serde(default)]
     pub display: DisplayConfig,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct ColorConfig {
-    #[serde(default = "default_directory_color")]
-    pub directory: String,
-    #[serde(default = "default_executable_color")]
-    pub executable: String,
-    #[serde(default = "default_regular_color")]
-    pub regular: String,
-    #[serde(default = "default_hidden_color")]
-    pub hidden: String,
-    #[serde(default = "default_symlink_color")]
-    pub symlink: String,
-    #[serde(default = "default_broken_symlink_color")]
-    pub broken_symlink: String,
-    #[serde(default)]
-    pub git: GitColorConfig,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(default)]
-pub struct GitColorConfig {
-    pub clean: String,
-    pub modified: String,
-    pub staged: String,
-    pub untracked: String,
-    pub conflict: String,
-    pub mixed: String,
-}
-
-impl Default for GitColorConfig {
-    fn default() -> Self {
-        Self {
-            clean: "bright_black".to_string(),
-            modified: "yellow".to_string(),
-            staged: "green".to_string(),
-            untracked: "cyan".to_string(),
-            conflict: "red".to_string(),
-            mixed: "yellow".to_string(),
-        }
+impl<'de> Deserialize<'de> for Config {
+    fn deserialize<DeserializerType>(
+        deserializer: DeserializerType,
+    ) -> Result<Self, DeserializerType::Error>
+    where
+        DeserializerType: Deserializer<'de>,
+    {
+        let document = Table::deserialize(deserializer)?;
+        resolve_config(document, None, &mut Vec::new()).map_err(serde::de::Error::custom)
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct IconConfig {
-    #[serde(default = "default_directory_icon")]
-    pub directory: String,
-    #[serde(default = "default_executable_icon")]
-    pub executable: String,
-    #[serde(default = "default_regular_icon")]
-    pub regular: String,
-    #[serde(default = "default_symlink_icon")]
-    pub symlink: String,
+#[derive(Deserialize, Default)]
+struct Settings {
     #[serde(default)]
-    pub colors: IconColorConfig,
+    theme: Option<String>,
+    #[serde(default)]
+    icons: IconConfig,
+    #[serde(default)]
+    display: DisplayConfig,
 }
 
+pub use crate::theme::FontStyle;
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct IconConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub directory: Option<String>,
+    #[serde(default)]
+    pub executable: Option<String>,
+    #[serde(default)]
+    pub regular: Option<String>,
+    #[serde(default)]
+    pub symlink: Option<String>,
+    /// Icons by filesystem identity, resolved from path keys when reading configuration.
+    #[serde(default, deserialize_with = "deserialize_path_icons")]
+    pub paths: HashMap<(u64, u64), String>,
+    #[serde(default)]
+    pub patterns: Vec<IconPattern>,
+}
+
+/// An ordered icon rule matching an entry's name or absolute path.
 #[derive(Debug, Deserialize, Clone)]
-pub struct IconColorConfig {
-    #[serde(default = "default_directory_icon_color")]
-    pub directory: String,
-    #[serde(default = "default_executable_icon_color")]
-    pub executable: String,
-    #[serde(default = "default_regular_icon_color")]
-    pub regular: String,
-    #[serde(default = "default_hidden_icon_color")]
-    pub hidden: String,
-    #[serde(default = "default_symlink_color")]
-    pub symlink: String,
-    #[serde(default = "default_broken_symlink_color")]
-    pub broken_symlink: String,
+pub struct IconPattern {
+    pub pattern: String,
+    pub icon: String,
+    #[serde(default)]
+    pub kind: IconPatternKind,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum IconPatternKind {
+    #[default]
+    Any,
+    File,
+    Directory,
+}
+
+fn deserialize_path_icons<'de, DeserializerType>(
+    deserializer: DeserializerType,
+) -> Result<HashMap<(u64, u64), String>, DeserializerType::Error>
+where
+    DeserializerType: Deserializer<'de>,
+{
+    let paths = BTreeMap::<String, String>::deserialize(deserializer)?;
+    Ok(paths
+        .into_iter()
+        .filter_map(|(path, icon)| {
+            if path.is_empty() {
+                return None;
+            }
+            let path = PathBuf::from(path);
+            let path = if path.is_absolute() {
+                path
+            } else {
+                dirs::home_dir()?.join(path.strip_prefix("~").unwrap_or(&path))
+            };
+            let metadata = fs::symlink_metadata(path).ok()?;
+            Some(((metadata.dev(), metadata.ino()), icon))
+        })
+        .collect())
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -102,12 +117,13 @@ pub struct DisplayConfig {
     pub datetime_format: String,
     #[serde(default)]
     pub tree: TreeConfig,
-    #[serde(default = "default_long_format_fields")]
-    pub long_format_fields: Vec<String>,
-    #[serde(default)]
+    /// Validated in `resolve_config` so unknown names become diagnostics.
+    #[serde(skip_deserializing, default = "default_long_format_fields")]
+    pub long_format_fields: Vec<LongField>,
+    #[serde(default = "default_long_format_titles")]
     pub long_format_titles: bool,
-    #[serde(default = "default_long_format_title_color")]
-    pub long_format_title_color: String,
+    #[serde(default)]
+    pub language_colors: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -124,45 +140,6 @@ impl Default for TreeConfig {
     }
 }
 
-impl Default for IconConfig {
-    fn default() -> Self {
-        IconConfig {
-            directory: default_directory_icon(),
-            executable: default_executable_icon(),
-            regular: default_regular_icon(),
-            symlink: default_symlink_icon(),
-            colors: IconColorConfig::default(),
-        }
-    }
-}
-
-impl Default for IconColorConfig {
-    fn default() -> Self {
-        IconColorConfig {
-            directory: default_directory_icon_color(),
-            executable: default_executable_icon_color(),
-            regular: default_regular_icon_color(),
-            hidden: default_hidden_icon_color(),
-            symlink: default_symlink_color(),
-            broken_symlink: default_broken_symlink_color(),
-        }
-    }
-}
-
-impl Default for ColorConfig {
-    fn default() -> Self {
-        ColorConfig {
-            directory: default_directory_color(),
-            executable: default_executable_color(),
-            regular: default_regular_color(),
-            hidden: default_hidden_color(),
-            symlink: default_symlink_color(),
-            broken_symlink: default_broken_symlink_color(),
-            git: GitColorConfig::default(),
-        }
-    }
-}
-
 impl Default for DisplayConfig {
     fn default() -> Self {
         DisplayConfig {
@@ -174,38 +151,10 @@ impl Default for DisplayConfig {
             datetime_format: default_datetime_format(),
             tree: TreeConfig::default(),
             long_format_fields: default_long_format_fields(),
-            long_format_titles: false,
-            long_format_title_color: default_long_format_title_color(),
+            long_format_titles: default_long_format_titles(),
+            language_colors: false,
         }
     }
-}
-
-fn default_directory_color() -> String {
-    "blue".to_string()
-}
-
-fn default_executable_color() -> String {
-    "red".to_string()
-}
-
-fn default_regular_color() -> String {
-    "white".to_string()
-}
-
-fn default_hidden_color() -> String {
-    "bright_black".to_string()
-}
-
-fn default_symlink_color() -> String {
-    "cyan".to_string()
-}
-
-fn default_broken_symlink_color() -> String {
-    "bright_red".to_string()
-}
-
-fn default_symlink_icon() -> String {
-    "".to_string()
 }
 
 fn default_column_spacing() -> usize {
@@ -217,115 +166,138 @@ fn default_max_rows() -> usize {
 }
 
 fn default_compact_max_rows() -> usize {
-    5
+    10
 }
 
+const DEFAULT_DATETIME_FORMAT: &str = "%-d %b %H:%M";
+
 fn default_datetime_format() -> String {
-    "%Y-%m-%d %H:%M:%S".to_string()
+    DEFAULT_DATETIME_FORMAT.to_string()
 }
 
 fn default_tree_style() -> String {
     "ascii".to_string()
 }
 
-fn default_long_format_fields() -> Vec<String> {
+fn default_long_format_fields() -> Vec<LongField> {
     vec![
-        "permissions".to_string(),
-        "nlink".to_string(),
-        "owner".to_string(),
-        "group".to_string(),
-        "size".to_string(),
-        "modified".to_string(),
-        "icon".to_string(),
-        "filename".to_string(),
+        LongField::Permissions,
+        LongField::Size,
+        LongField::Modified,
+        LongField::Git,
+        LongField::Filename,
     ]
 }
 
-fn default_long_format_title_color() -> String {
-    "bright_black".to_string()
+/// A column in long output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LongField {
+    Git,
+    Permissions,
+    Nlink,
+    Owner,
+    Group,
+    Size,
+    Modified,
+    Filename,
 }
 
-fn default_directory_icon() -> String {
-    "".to_string()
-}
-
-fn default_executable_icon() -> String {
-    "".to_string()
-}
-
-fn default_regular_icon() -> String {
-    "".to_string()
-}
-
-fn default_directory_icon_color() -> String {
-    "blue".to_string()
-}
-
-fn default_executable_icon_color() -> String {
-    "red".to_string()
-}
-
-fn default_regular_icon_color() -> String {
-    "white".to_string()
-}
-
-fn default_hidden_icon_color() -> String {
-    "bright_black".to_string()
-}
-
-impl ColorConfig {
-    pub fn get_directory_color(&self) -> Color {
-        parse_color(&self.directory)
+impl LongField {
+    /// Parses a configured field name; `Ok(None)` marks the ignored legacy `icon` field.
+    fn parse(name: &str) -> Result<Option<Self>, ()> {
+        Ok(Some(match name {
+            "git" => Self::Git,
+            "permissions" => Self::Permissions,
+            "nlink" | "links" => Self::Nlink,
+            "owner" => Self::Owner,
+            "group" => Self::Group,
+            "size" => Self::Size,
+            "modified" => Self::Modified,
+            "filename" => Self::Filename,
+            "icon" => return Ok(None),
+            _ => return Err(()),
+        }))
     }
 
-    pub fn get_executable_color(&self) -> Color {
-        parse_color(&self.executable)
+    /// The field name used by legacy per-column style settings.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Git => "git",
+            Self::Permissions => "permissions",
+            Self::Nlink => "nlink",
+            Self::Owner => "owner",
+            Self::Group => "group",
+            Self::Size => "size",
+            Self::Modified => "modified",
+            Self::Filename => "filename",
+        }
     }
 
-    pub fn get_regular_color(&self) -> Color {
-        parse_color(&self.regular)
-    }
-
-    pub fn get_hidden_color(&self) -> Color {
-        parse_color(&self.hidden)
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Git => "Git",
+            Self::Permissions => "Permissions",
+            Self::Nlink => "Links",
+            Self::Owner => "Owner",
+            Self::Group => "Group",
+            Self::Size => "Size",
+            Self::Modified => "Modified",
+            Self::Filename => "Name",
+        }
     }
 }
 
-impl IconColorConfig {
-    pub fn get_directory_color(&self) -> Color {
-        parse_color(&self.directory)
-    }
-
-    pub fn get_executable_color(&self) -> Color {
-        parse_color(&self.executable)
-    }
-
-    pub fn get_regular_color(&self) -> Color {
-        parse_color(&self.regular)
-    }
-
-    pub fn get_hidden_color(&self) -> Color {
-        parse_color(&self.hidden)
-    }
+fn default_long_format_titles() -> bool {
+    true
 }
 
 impl IconConfig {
     pub fn get_directory_icon(&self) -> String {
-        self.directory.clone()
+        crate::icon::FileIcon::Directory.as_str_custom(self)
     }
 
     pub fn get_executable_icon(&self) -> String {
-        self.executable.clone()
+        crate::icon::FileIcon::Executable.as_str_custom(self)
     }
 
     pub fn get_regular_icon(&self) -> String {
-        self.regular.clone()
+        crate::icon::FileIcon::RegularFile.as_str_custom(self)
+    }
+
+    pub fn get_symlink_icon(&self) -> String {
+        crate::icon::FileIcon::Symlink.as_str_custom(self)
+    }
+
+    /// Whether any file type has a visible icon after applying overrides.
+    pub fn has_icons(&self) -> bool {
+        [
+            self.get_directory_icon(),
+            self.get_executable_icon(),
+            self.get_regular_icon(),
+            self.get_symlink_icon(),
+        ]
+        .iter()
+        .any(|icon| !icon.is_empty())
+            || self.paths.values().any(|icon| !icon.is_empty())
+            || self.patterns.iter().any(|rule| !rule.icon.is_empty())
     }
 }
 
 impl DisplayConfig {
-    pub fn get_long_format_title_color(&self) -> Color {
-        parse_color(&self.long_format_title_color)
+    pub fn uses_sizes(&self, long: bool, sort: SortOptions) -> bool {
+        sort.field == Some(SortField::Size)
+            || (long && self.long_format_fields.contains(&LongField::Size))
+    }
+
+    /// Parsed `datetime_format` items; the format is validated when the config loads.
+    pub(crate) fn datetime_items(&self) -> Vec<Item<'_>> {
+        StrftimeItems::new(&self.datetime_format)
+            .parse()
+            .unwrap_or_else(|_| {
+                StrftimeItems::new(DEFAULT_DATETIME_FORMAT)
+                    .parse()
+                    .expect("default datetime format is valid")
+            })
     }
 
     pub fn default_sort(&self) -> SortOptions {
@@ -333,51 +305,138 @@ impl DisplayConfig {
     }
 }
 
-pub(crate) fn parse_color(color_str: &str) -> Color {
-    match color_str.to_lowercase().as_str() {
-        "black" => Color::Black,
-        "red" => Color::Red,
-        "green" => Color::Green,
-        "yellow" => Color::Yellow,
-        "blue" => Color::Blue,
-        "magenta" => Color::Magenta,
-        "cyan" => Color::Cyan,
-        "white" => Color::White,
-        "bright_black" => Color::BrightBlack,
-        "bright_red" => Color::BrightRed,
-        "bright_green" => Color::BrightGreen,
-        "bright_yellow" => Color::BrightYellow,
-        "bright_blue" => Color::BrightBlue,
-        "bright_magenta" => Color::BrightMagenta,
-        "bright_cyan" => Color::BrightCyan,
-        "bright_white" => Color::BrightWhite,
-        _ => Color::White, // Default fallback
-    }
-}
-
 pub fn load_config() -> Config {
-    let config_path = get_config_path();
-
-    if !config_path.exists() {
-        return Config::default();
-    }
-
-    match fs::read_to_string(&config_path) {
-        Ok(contents) => match toml::from_str(&contents) {
-            Ok(config) => config,
-            Err(e) => {
-                eprintln!("Warning: Failed to parse config file: {}", e);
-                Config::default()
+    let directory = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".config/lx");
+    let preferred = directory.join("config.toml");
+    let config_path = match fs::symlink_metadata(&preferred) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => directory.join("config"),
+        _ => preferred,
+    };
+    let contents = match fs::read_to_string(&config_path) {
+        Ok(contents) => contents,
+        Err(error) => {
+            if error.kind() != std::io::ErrorKind::NotFound || config_path.ends_with("config.toml")
+            {
+                eprintln!(
+                    "lx: cannot read config '{}': {error}",
+                    config_path.display()
+                );
             }
-        },
-        Err(_) => Config::default(),
+            return Config::default();
+        }
+    };
+    let document = match toml::from_str::<Table>(&contents) {
+        Ok(document) => document,
+        Err(error) => {
+            eprintln!(
+                "lx: cannot parse config '{}': {error}",
+                config_path.display()
+            );
+            return Config::default();
+        }
+    };
+    let mut diagnostics = Vec::new();
+    let result = resolve_config(document, Some(&directory), &mut diagnostics);
+    for diagnostic in diagnostics {
+        eprintln!("lx: config '{}': {diagnostic}", config_path.display());
     }
+    result.unwrap_or_else(|error| {
+        eprintln!(
+            "lx: cannot parse config '{}': {error}",
+            config_path.display()
+        );
+        Config::default()
+    })
 }
 
-fn get_config_path() -> PathBuf {
-    let mut path = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    path.push(".config");
-    path.push("lx");
-    path.push("config");
-    path
+fn resolve_config(
+    document: Table,
+    directory: Option<&Path>,
+    diagnostics: &mut Vec<String>,
+) -> Result<Config, toml::de::Error> {
+    let settings: Settings = toml::Value::Table(document.clone()).try_into()?;
+    let mut theme = Theme::default();
+    if let (Some(name), Some(directory)) = (settings.theme.as_deref(), directory) {
+        apply_named_theme(&mut theme, name, directory, diagnostics);
+    }
+    theme.apply_legacy(&document, diagnostics);
+    theme.apply_document(&document, true, diagnostics);
+    let mut display = settings.display;
+    if StrftimeItems::new(&display.datetime_format)
+        .parse()
+        .is_err()
+    {
+        diagnostics.push(format!(
+            "invalid display.datetime_format {:?}; using {DEFAULT_DATETIME_FORMAT:?}",
+            display.datetime_format
+        ));
+        display.datetime_format = default_datetime_format();
+    }
+    if let Some(fields) = document
+        .get("display")
+        .and_then(|display| display.get("long_format_fields"))
+    {
+        match fields.clone().try_into::<Vec<String>>() {
+            Ok(names) => {
+                display.long_format_fields = names
+                    .iter()
+                    .filter_map(|name| {
+                        LongField::parse(name).unwrap_or_else(|()| {
+                            diagnostics
+                                .push(format!("unknown display.long_format_fields entry {name:?}"));
+                            None
+                        })
+                    })
+                    .collect();
+            }
+            Err(error) => diagnostics.push(format!("display.long_format_fields: {error}")),
+        }
+    }
+    Ok(Config {
+        theme,
+        icons: settings.icons,
+        display,
+    })
+}
+
+fn apply_named_theme(
+    theme: &mut Theme,
+    name: &str,
+    directory: &Path,
+    diagnostics: &mut Vec<String>,
+) {
+    if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\']) {
+        diagnostics.push(format!("invalid theme name: {name:?}"));
+        return;
+    }
+    let path = directory.join("themes").join(format!("{name}.toml"));
+    let contents = match fs::read_to_string(&path) {
+        Ok(contents) => contents,
+        Err(error) if name == "default" && error.kind() == std::io::ErrorKind::NotFound => return,
+        Err(error) => {
+            diagnostics.push(format!("cannot read theme '{}': {error}", path.display()));
+            return;
+        }
+    };
+    match toml::from_str::<Table>(&contents) {
+        Ok(document) => {
+            let mut theme_diagnostics = Vec::new();
+            for key in document.keys().filter(|key| key.as_str() != "style") {
+                theme_diagnostics.push(format!("unknown key {key:?}; themes contain only style"));
+            }
+            let mut candidate = theme.clone();
+            candidate.apply_document(&document, false, &mut theme_diagnostics);
+            if theme_diagnostics.is_empty() {
+                *theme = candidate;
+            }
+            diagnostics.extend(
+                theme_diagnostics
+                    .into_iter()
+                    .map(|message| format!("theme '{}': {message}", path.display())),
+            );
+        }
+        Err(error) => diagnostics.push(format!("cannot parse theme '{}': {error}", path.display())),
+    }
 }

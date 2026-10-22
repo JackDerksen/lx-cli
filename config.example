@@ -1,47 +1,33 @@
-# Example configuration file for lx
-# Place this file at: ~/.config/lx/config
-
-[colors]
-# Available colors:
-# black, red, green, yellow, blue, magenta, cyan, white
-# bright_black, bright_red, bright_green, bright_yellow
-# bright_blue, bright_magenta, bright_cyan, bright_white
-
-# Color for directories
-directory = "blue"
-
-# Color for executable files
-executable = "red"
-
-# Color for regular files
-regular = "white"
-
-# Color for hidden files and directories
-hidden = "bright_black"
-
-# Symlink names and targets (broken links also show a [broken] marker)
-symlink = "cyan"
-broken_symlink = "bright_red"
-
-[colors.git]
-# Git badge colours (--git), using the colour names listed above
-clean = "bright_black" # -
-modified = "yellow"    # M
-staged = "green"       # S
-untracked = "cyan"     # ?
-conflict = "red"       # !
-mixed = "yellow"       # *
+# Example TOML configuration for lx
+# Place at ~/.config/lx/config.toml (legacy extensionless config also works).
+# Omitted settings inherit defaults; optional style overrides are below.
+# Theme files live at ~/.config/lx/themes/<name>.toml.
+# theme = "my-theme"
 
 [icons]
-# Custom icons for different file types
-# By default, lx uses nerd font icons. If you don't have a nerd font installed,
-# you can set custom icons here using any unicode characters or simple ASCII.
+# Enable automatic Nerd Font icons and Git status icons (default: false).
+# System folders get dedicated icons; other directories use a generic folder.
+# Includes ~/.config, ~/.cache, ~/.local, ~/.Trash, and ~/.ssh (shown with -a).
+# Common development folders such as .git, src, target, tests, and docs also
+# have dedicated icons wherever they appear.
+# Licence files (LICENSE, LICENCE, COPYING, COPYRIGHT and suffixed variants)
+# use the \uE60A icon; custom global, path, and pattern icons take precedence.
+# README files use the book icon (\uF02D), including extensions such as .md.
+# Common source languages, configuration, documents, media, archives, databases,
+# and fonts get file icons by name or extension. Key manifests, lockfiles,
+# Makefiles, Dockerfiles, .env variants, and Git settings are recognised too.
+# In long output, icons appear beside filenames within the Name column.
+enabled = false
+# Optional global overrides for each file type. A directory override replaces
+# all automatic system-folder icons. An empty string hides that type's icons.
+# Explicit overrides also work when automatic icons are disabled.
 
 # Examples:
-# Nerd font (default):
+# Nerd Font:
 # directory = ""
 # executable = ""
 # regular = ""
+# symlink = ""
 
 # Emoji icons:
 # directory = "📁"
@@ -53,32 +39,54 @@ mixed = "yellow"       # *
 # executable = "*"
 # regular = "-"
 
-directory = ""
-executable = ""
-regular = ""
-symlink = ""
+# directory = "" # Hide all directory icons, including system folders
 
-[icons.colors]
-# Custom colors for icons (separate from filename colors)
-# Uses the same color names as [colors] section
-# By default, icon colors match the filename colors for each file type
-directory = "blue"
-executable = "green"
-regular = "white"
-hidden = "bright_black"
-symlink = "cyan"
-broken_symlink = "bright_red"
+[icons.paths]
+# Override individual directories, files, or symlinks. Global file-type icons
+# above take precedence, including empty strings. Path overrides work even
+# when automatic icons are disabled, and do not apply to child entries.
+# Paths may be absolute, start with ~/, or be relative to your home directory.
+# Missing or inaccessible paths are ignored. Use "" to hide an entry's icon.
+# "~/Documents" = "📚"
+# "~/.config" = "⚙️"
+# "~/.Trash" = "🗑️"
+# "projects" = "💻"
+# "/srv/archive" = ""
+
+# Ordered name/path rules; first match wins. Exact paths and global file-type
+# settings take precedence. Rules also work with automatic icons disabled.
+# Supports * and ?. Patterns containing / match absolute listing paths;
+# other patterns match names. * can cross path separators. A trailing /
+# restricts a rule to directories and is removed before matching.
+# Optional kind: any (default), file (including symlinks), or directory.
+# An empty icon hides matching icons.
+# [[icons.patterns]]
+# pattern = "*.rs"
+# kind = "file"
+# icon = "🦀"
+#
+# [[icons.patterns]]
+# pattern = "*.md"
+# kind = "file"
+# icon = "📝"
+#
+# [[icons.patterns]]
+# pattern = "*/projectName/notes/"
+# icon = "📓"
 
 [display]
 # Number of spaces between columns (default: 2)
 column_spacing = 2
 
+# Colour regular files by language or type using [style.file_type] (default: false)
+language_colors = false
+
 # Maximum number of rows before wrapping to next column in short format
 # Only applies to short format (not -l). Set to 0 for no limit (default: 0)
 max_rows = 0
 
-# Maximum number of rows used by compact format (-c) (default: 5)
-compact_max_rows = 5
+# Maximum number of rows used by compact format (-c) (default: 10)
+compact_max_rows = 10
 
 # Default sorting. Leave sort_field unset to preserve lx's built-in ordering.
 # Available fields: name, size, modified, type, permissions, links, owner, group
@@ -88,41 +96,34 @@ compact_max_rows = 5
 # Date and time format used by the modified long-format field. Supports Chrono
 # strftime specifiers, such as %B for a full month name, %b for an abbreviation,
 # %-d for an unpadded day, and %I:%M %p for a 12-hour time.
-datetime_format = "%Y-%m-%d %H:%M:%S"
+datetime_format = "%-d %b %H:%M"
 # Example: datetime_format = "%B %-d, %Y at %-I:%M %p"
 
 # Long format field ordering and visibility (used with -l flag)
 # Specify which fields to display and in what order. Available fields:
-# - filename: The name of the file
-# - icon: The file icon
+# - filename: The name of the file, including its icon when enabled
 # - permissions: File permissions (e.g., drwxr-xr-x)
 # - git: Git status (populated with --git; automatically added when omitted)
 # - nlink: Number of hard links
 # - owner: File owner name
 # - group: File group name
-# - size: File size (human-readable)
+# - size: File size or directory contents total (more human-readable, but MUCH slower!)
 # - modified: Last modified date and time
 #
 # Default order (keeps tree names at the right edge in recursive long output):
-# [permissions, nlink, owner, group, size, modified, icon, filename]
+# [permissions, size, modified, git, filename]
 #
-# To customize, list the fields you want in your desired order:
+# To customise, list the fields you want in your desired order:
 long_format_fields = [
     "permissions",
-    "nlink",
-    "owner",
-    "group",
     "size",
     "modified",
-    "icon",
+    "git",
     "filename",
 ]
 
-# Show column titles above long-format output (default: false)
-long_format_titles = false
-
-# Colour used for long-format column titles
-long_format_title_color = "bright_black"
+# Show column titles above long-format output (default: true)
+long_format_titles = true
 
 [display.tree]
 # Tree display style for recursive output (-r flag)
@@ -130,3 +131,47 @@ long_format_title_color = "bright_black"
 # - "ascii": Uses box-drawing characters (├─, ╰─, │)
 # - "indent": Uses simple spacing for indentation
 style = "ascii"
+
+# Themes and inline configuration share these optional semantic style tables.
+# See themes/default.toml for every role and the explicit built-in hex palette.
+# Colours: #RGB, #RRGGBB, six-digit hex, ANSI names, or "default".
+# Attributes: bold, dimmed, italic, underline, strikethrough, reversed.
+# Omitted properties inherit; [] clears attributes. Background is optional.
+# Explicit inline styles take precedence over the selected theme.
+# [style.filekinds]
+# directory = { foreground = "#9BE3ED", attributes = ["bold"] }
+# executable = { foreground = "#FC808F", attributes = ["bold"] }
+# regular = { foreground = "#E2E2E3" }
+#
+# [style.filenames]
+# hidden = { foreground = "#68656F", attributes = ["dimmed"] }
+#
+# [style.icons]
+# directory = { foreground = "#9BE3ED" }
+# hidden = { foreground = "#68656F" }
+#
+# [style.header]
+# foreground = "#68656F"
+# attributes = ["underline"]
+#
+# [style.permissions]
+# read = { foreground = "#BBE8EE" }
+# write = { foreground = "#FFC79E" }
+# execute = { foreground = "#D6D9FC" }
+#
+# [style.size.megabytes]
+# number = { foreground = "#E2E2E3" }
+# unit = { foreground = "#FFC79E" }
+#
+# [style.date]
+# foreground = "#BBE8EE"
+#
+# [style.file_type]
+# source = { foreground = "#9BE3ED" }
+# document = { foreground = "#CFEEC2" }
+#
+# [style.git]
+# modified = { foreground = "#FFDA84", attributes = ["bold"] }
+#
+# [style.tree]
+# foreground = "#68656F"

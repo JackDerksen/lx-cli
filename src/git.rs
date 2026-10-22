@@ -1,5 +1,3 @@
-use crate::config::{GitColorConfig, parse_color};
-use colored::Colorize;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::io;
@@ -19,29 +17,27 @@ pub enum GitStatus {
 }
 
 impl GitStatus {
-    pub(crate) fn badge(self) -> &'static str {
-        match self {
-            Self::Clean => "-",
-            Self::Modified => "M",
-            Self::Staged => "S",
-            Self::Untracked => "?",
-            Self::Conflict => "!",
-            Self::Mixed => "*",
-        }
+    pub(crate) fn badge(self, icons_enabled: bool) -> &'static str {
+        let (letter, icon) = match self {
+            Self::Clean => ("-", "-"),
+            Self::Modified => ("M", "\u{f040}"),  // Pencil
+            Self::Staged => ("S", "\u{f058}"),    // Circled check
+            Self::Untracked => ("?", "\u{f059}"), // Circled question
+            Self::Conflict => ("!", "\u{f071}"),  // Warning
+            Self::Mixed => ("*", "\u{f074}"),     // Shuffle
+        };
+        if icons_enabled { icon } else { letter }
     }
 
-    pub(crate) fn format(self, width: usize, colors: &GitColorConfig) -> String {
-        let color = match self {
-            Self::Clean => &colors.clean,
-            Self::Modified => &colors.modified,
-            Self::Staged => &colors.staged,
-            Self::Untracked => &colors.untracked,
-            Self::Conflict => &colors.conflict,
-            Self::Mixed => &colors.mixed,
-        };
-        format!("{:<width$}", self.badge())
-            .color(parse_color(color))
-            .to_string()
+    pub(crate) fn style_role(self) -> &'static str {
+        match self {
+            Self::Clean => "git.clean",
+            Self::Modified => "git.modified",
+            Self::Staged => "git.staged",
+            Self::Untracked => "git.untracked",
+            Self::Conflict => "git.conflict",
+            Self::Mixed => "git.mixed",
+        }
     }
 
     fn from_codes(codes: [u8; 2]) -> Self {
@@ -93,12 +89,17 @@ impl GitRepository {
 
         let mut command = Command::new("git");
         command
-            .arg("--no-optional-locks")
-            .arg("-C")
+            .args(["--no-optional-locks", "--literal-pathspecs", "-C"])
             .arg(root)
             .args(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
         if include_ignored {
             command.arg("--ignored=matching");
+        }
+        // Statuses and summaries only ever describe paths beneath the listed directory, so
+        // there is no need for Git to scan the rest of the repository.
+        let scope = directory.strip_prefix(root).unwrap_or(Path::new(""));
+        if !scope.as_os_str().is_empty() {
+            command.arg("--").arg(scope);
         }
         let output = command.output()?;
         if !output.status.success() {

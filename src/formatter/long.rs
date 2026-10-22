@@ -1,324 +1,312 @@
-use crate::config::Config;
-use crate::file_entry::{DateTimePart, DateTimePartAlignment, FileEntry};
-use crate::formatter::{format_filename, print_line};
+use crate::config::{Config, LongField};
+use crate::file_entry::FileEntry;
+use crate::formatter::render::{Renderer, push_spaces};
+use crate::formatter::{filename_width, print_line};
 use crate::sort::{SortOptions, sort_entries};
-use colored::Colorize;
-use std::io;
+use chrono::format::Item;
+use chrono::{DateTime, FixedOffset};
+use std::collections::HashMap;
+use std::fmt::Write as _;
+use std::io::{self, Write};
+use std::mem::MaybeUninit;
+use std::time::SystemTime;
 use unicode_width::UnicodeWidthStr;
 
 pub fn format_long(
+    out: &mut dyn Write,
     mut entries: Vec<FileEntry>,
     config: &Config,
     sort: SortOptions,
 ) -> io::Result<()> {
     sort_entries(&mut entries, sort);
-
-    print_long_entries(&entries, config, "")
-}
-
-pub fn print_long_entries(entries: &[FileEntry], config: &Config, prefix: &str) -> io::Result<()> {
     if entries.is_empty() {
         return Ok(());
     }
-
-    let fields = &config.display.long_format_fields;
-    let widths = calculate_column_widths(entries, fields, config);
-    print_long_entries_with_widths(entries, config, prefix, fields, &widths)
+    print_long_entries(out, &entries, None, config)
 }
 
-pub fn calculate_column_widths(
+/// Prints titles and rows; tree branches, when given, are drawn inside the Name column.
+pub fn print_long_entries(
+    out: &mut dyn Write,
     entries: &[FileEntry],
-    fields: &[String],
+    filename_prefixes: Option<&[String]>,
     config: &Config,
-) -> std::collections::HashMap<String, usize> {
-    let mut max_widths: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    let modified_values = format_modified_entries(entries, &config.display.datetime_format);
+) -> io::Result<()> {
+    let layout = LongLayout::new(entries, filename_prefixes, config);
+    if config.display.long_format_titles {
+        print_long_titles(out, config, &layout)?;
+    }
+    print_long_rows(out, entries, config, &layout, filename_prefixes)
+}
 
-    for field in fields {
-        let width = match field.as_str() {
-            "git" => usize::from(entries.iter().any(|entry| entry.git_status.is_some())),
-            "nlink" => entries
-                .iter()
-                .map(|e| e.nlink.to_string().len())
-                .max()
-                .unwrap_or(0),
-            "owner" => entries.iter().map(|e| e.owner.len()).max().unwrap_or(0),
-            "group" => entries.iter().map(|e| e.group.len()).max().unwrap_or(0),
-            "size" => entries
-                .iter()
-                .map(|e| e.format_size().len())
-                .max()
-                .unwrap_or(0),
-            "modified" => modified_values
-                .iter()
-                .map(|value| UnicodeWidthStr::width(value.as_str()))
-                .max()
-                .unwrap_or(0),
-            "icon" => entries
-                .iter()
-                .map(|e| UnicodeWidthStr::width(e.get_icon_custom(&config.icons).as_str()))
-                .max()
-                .unwrap_or(0),
-            "filename" => entries
-                .iter()
-                .map(|entry| UnicodeWidthStr::width(entry.display_name().as_ref()))
-                .max()
-                .unwrap_or(0),
-            "permissions" => entries
-                .iter()
-                .map(|e| e.format_permissions().len())
-                .max()
-                .unwrap_or(0),
-            _ => 0,
-        };
-        let title_width = if config.display.long_format_titles {
-            UnicodeWidthStr::width(column_title(field))
+/// Columns, their widths, and each entry's formatted date, computed once per listing.
+struct LongLayout<'config> {
+    fields: &'config [LongField],
+    widths: HashMap<LongField, usize>,
+    modified: Vec<String>,
+}
+
+impl<'config> LongLayout<'config> {
+    fn new(
+        entries: &[FileEntry],
+        filename_prefixes: Option<&[String]>,
+        config: &'config Config,
+    ) -> Self {
+        let fields = config.display.long_format_fields.as_slice();
+        let modified = if fields.contains(&LongField::Modified) {
+            format_modified_entries(entries, &config.display.datetime_items())
         } else {
-            0
+            vec![String::new(); entries.len()]
         };
-        max_widths.insert(field.clone(), width.max(title_width));
+        let mut widths = HashMap::new();
+        for &field in fields {
+            let width = match field {
+                LongField::Git => entries
+                    .iter()
+                    .filter_map(|entry| entry.git_status)
+                    .map(|status| UnicodeWidthStr::width(status.badge(config.icons.enabled)))
+                    .max()
+                    .unwrap_or(0),
+                LongField::Nlink => entries
+                    .iter()
+                    .map(|e| e.nlink.to_string().len())
+                    .max()
+                    .unwrap_or(0),
+                LongField::Owner => entries
+                    .iter()
+                    .map(|entry| UnicodeWidthStr::width(entry.owner.as_str()))
+                    .max()
+                    .unwrap_or(0),
+                LongField::Group => entries
+                    .iter()
+                    .map(|entry| UnicodeWidthStr::width(entry.group.as_str()))
+                    .max()
+                    .unwrap_or(0),
+                LongField::Size => entries
+                    .iter()
+                    .map(|e| e.format_size().to_string().len())
+                    .max()
+                    .unwrap_or(0),
+                LongField::Modified => modified
+                    .iter()
+                    .map(|value| UnicodeWidthStr::width(value.as_str()))
+                    .max()
+                    .unwrap_or(0),
+                LongField::Filename => entries
+                    .iter()
+                    .enumerate()
+                    .map(|(index, entry)| {
+                        filename_width(entry, config)
+                            + filename_prefixes
+                                .and_then(|prefixes| prefixes.get(index))
+                                .map_or(0, |prefix| UnicodeWidthStr::width(prefix.as_str()))
+                    })
+                    .max()
+                    .unwrap_or(0),
+                LongField::Permissions => entries
+                    .iter()
+                    .map(|e| e.format_permissions().len())
+                    .max()
+                    .unwrap_or(0),
+            };
+            let title_width = if config.display.long_format_titles {
+                UnicodeWidthStr::width(field.title())
+            } else {
+                0
+            };
+            widths.insert(field, width.max(title_width));
+        }
+        Self {
+            fields,
+            widths,
+            modified,
+        }
     }
 
-    max_widths
-}
-
-pub fn calculate_column_widths_with_filename_prefixes(
-    entries: &[FileEntry],
-    filename_prefixes: &[String],
-    fields: &[String],
-    config: &Config,
-) -> std::collections::HashMap<String, usize> {
-    let mut entries_with_prefixes = entries.to_vec();
-
-    for (entry, filename_prefix) in entries_with_prefixes.iter_mut().zip(filename_prefixes) {
-        entry.path = format!("{filename_prefix}{}", entry.path.to_string_lossy()).into();
+    fn width(&self, field: LongField) -> usize {
+        self.widths.get(&field).copied().unwrap_or(0)
     }
-
-    calculate_column_widths(&entries_with_prefixes, fields, config)
 }
 
-pub fn print_long_entries_with_widths(
+fn print_long_rows(
+    out: &mut dyn Write,
     entries: &[FileEntry],
     config: &Config,
-    prefix: &str,
-    fields: &[String],
-    widths: &std::collections::HashMap<String, usize>,
-) -> io::Result<()> {
-    if config.display.long_format_titles {
-        print_long_titles(config, prefix, fields, widths)?;
-    }
-    print_long_entries_with_optional_filename_prefixes(
-        entries, config, prefix, fields, widths, None,
-    )
-}
-
-pub fn print_long_entries_with_filename_prefixes(
-    entries: &[FileEntry],
-    filename_prefixes: &[String],
-    config: &Config,
-    fields: &[String],
-    widths: &std::collections::HashMap<String, usize>,
-) -> io::Result<()> {
-    if config.display.long_format_titles {
-        print_long_titles(config, "", fields, widths)?;
-    }
-    print_long_entries_with_optional_filename_prefixes(
-        entries,
-        config,
-        "",
-        fields,
-        widths,
-        Some(filename_prefixes),
-    )
-}
-
-fn print_long_entries_with_optional_filename_prefixes(
-    entries: &[FileEntry],
-    config: &Config,
-    prefix: &str,
-    fields: &[String],
-    widths: &std::collections::HashMap<String, usize>,
+    layout: &LongLayout<'_>,
     filename_prefixes: Option<&[String]>,
 ) -> io::Result<()> {
-    let modified_values = format_modified_entries(entries, &config.display.datetime_format);
-
-    // Print each entry
+    let fields = layout.fields;
+    let renderer = Renderer::new(config);
+    let tree_style = config.theme.style("tree");
+    let separator = " ".repeat(config.display.column_spacing);
+    // One buffer reused for every row.
+    let mut line = String::new();
     for (entry_index, entry) in entries.iter().enumerate() {
-        let mut output_parts: Vec<String> = Vec::new();
-
-        for (idx, field) in fields.iter().enumerate() {
-            let part = match field.as_str() {
-                "git" => entry
-                    .git_status
-                    .map(|status| {
-                        status.format(widths.get("git").copied().unwrap_or(0), &config.colors.git)
-                    })
-                    .unwrap_or_default(),
-                "permissions" => {
-                    let width = widths.get("permissions").copied().unwrap_or(0);
-                    let permissions = entry.format_permissions();
-                    if idx < fields.len() - 1 {
-                        pad_to_display_width(permissions, width)
-                    } else {
-                        permissions
-                    }
-                }
-                "nlink" => {
-                    let width = widths.get("nlink").copied().unwrap_or(0);
-                    format!("{:>width$}", entry.nlink.to_string(), width = width)
-                }
-                "owner" => {
-                    let width = widths.get("owner").copied().unwrap_or(0);
-                    format!("{:<width$}", entry.owner, width = width)
-                }
-                "group" => {
-                    let width = widths.get("group").copied().unwrap_or(0);
-                    format!("{:<width$}", entry.group, width = width)
-                }
-                "size" => {
-                    let width = widths.get("size").copied().unwrap_or(0);
-                    format!("{:>width$}", entry.format_size(), width = width)
-                }
-                "modified" => {
-                    let width = widths.get("modified").copied().unwrap_or(0);
-                    let modified = &modified_values[entry_index];
-                    if idx < fields.len() - 1 {
-                        pad_to_display_width(modified.to_string(), width)
-                    } else {
-                        modified.to_string()
-                    }
-                }
-                "icon" => {
-                    let icon = entry.get_icon_custom(&config.icons);
-                    let icon_color = entry.get_icon_color(&config.icons.colors);
-                    let width = widths.get("icon").copied().unwrap_or(0);
-                    let padded = if idx < fields.len() - 1 {
-                        pad_to_display_width(icon, width)
-                    } else {
-                        icon
-                    };
-                    format!("{}", padded.color(icon_color))
-                }
-                "filename" => {
-                    let filename_str = entry.display_name();
-                    let width = widths.get("filename").copied().unwrap_or(0);
-                    let filename_prefix = filename_prefixes
-                        .and_then(|prefixes| prefixes.get(entry_index))
-                        .map(String::as_str)
-                        .unwrap_or("");
-
-                    let padding = if idx < fields.len() - 1 {
-                        width.saturating_sub(
-                            UnicodeWidthStr::width(filename_prefix)
-                                + UnicodeWidthStr::width(filename_str.as_ref()),
-                        )
-                    } else {
-                        0
-                    };
-                    let filename_colored = format_filename(entry, config, padding);
-                    format!("{filename_prefix}{filename_colored}")
-                }
-                _ => String::new(),
+        line.clear();
+        let mut first = true;
+        for (index, &field) in fields.iter().enumerate() {
+            let mut cell = renderer.field(entry, field, &layout.modified[entry_index]);
+            let filename_prefix = match field {
+                LongField::Filename => filename_prefixes
+                    .and_then(|prefixes| prefixes.get(entry_index))
+                    .map_or("", String::as_str),
+                _ => "",
             };
-            output_parts.push(part);
+            if cell.text.is_empty() && filename_prefix.is_empty() {
+                continue;
+            }
+            if !first {
+                line.push_str(&separator);
+            }
+            first = false;
+            if !filename_prefix.is_empty() {
+                let mut text = String::with_capacity(filename_prefix.len() + cell.text.len() + 16);
+                tree_style.paint_into(&mut text, filename_prefix);
+                text.push_str(&cell.text);
+                cell.text = text;
+                cell.width += UnicodeWidthStr::width(filename_prefix);
+            }
+            let right = matches!(field, LongField::Size | LongField::Nlink);
+            let width = if right || index < fields.len() - 1 {
+                layout.width(field)
+            } else {
+                cell.width
+            };
+            cell.write_padded(&mut line, width, right);
         }
-
-        let visible_parts: Vec<&str> = output_parts
-            .iter()
-            .map(|part| part.as_str())
-            .filter(|part| !part.is_empty())
-            .collect();
-        print_line(format_args!("{}{}", prefix, visible_parts.join("  ")))?;
+        line.push('\n');
+        out.write_all(line.as_bytes())?;
     }
     Ok(())
 }
 
-fn format_modified_entries(entries: &[FileEntry], datetime_format: &str) -> Vec<String> {
-    let parts: Vec<Vec<DateTimePart>> = entries
-        .iter()
-        .map(|entry| entry.format_modified_parts(datetime_format))
-        .collect();
-    let mut widths = vec![0; parts.iter().map(Vec::len).max().unwrap_or(0)];
-
-    for entry_parts in &parts {
-        for (index, part) in entry_parts.iter().enumerate() {
-            if part.alignment == DateTimePartAlignment::None {
-                continue;
+/// Converts to local time with the C library, which honours `TZ` like `ls`.
+///
+/// chrono's own `Local` needs its `clock` feature, which links CoreFoundation on macOS and
+/// adds about a millisecond to every launch.
+fn local_datetime(time: SystemTime) -> DateTime<FixedOffset> {
+    let (seconds, nanoseconds) = match time.duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(duration) => (duration.as_secs() as i64, duration.subsec_nanos()),
+        Err(error) => {
+            let before = error.duration();
+            match before.subsec_nanos() {
+                0 => (-(before.as_secs() as i64), 0),
+                nanoseconds => (-(before.as_secs() as i64) - 1, 1_000_000_000 - nanoseconds),
             }
+        }
+    };
+    let utc = DateTime::from_timestamp(seconds, nanoseconds).unwrap_or_default();
+    let mut local = MaybeUninit::<libc::tm>::uninit();
+    let time = seconds as libc::time_t;
+    // SAFETY: both pointers are valid; `localtime_r` initialises `local` when it succeeds.
+    let offset = if unsafe { libc::localtime_r(&time, local.as_mut_ptr()) }.is_null() {
+        0
+    } else {
+        // SAFETY: checked above that `localtime_r` succeeded.
+        unsafe { local.assume_init() }.tm_gmtoff as i32
+    };
+    utc.with_timezone(&FixedOffset::east_opt(offset).unwrap_or(FixedOffset::east_opt(0).unwrap()))
+}
 
-            let width = UnicodeWidthStr::width(part.value.as_str());
-            widths[index] = widths[index].max(width);
+/// Formats every entry's date, padding each numeric or text component to a shared width.
+fn format_modified_entries(entries: &[FileEntry], datetime_items: &[Item<'_>]) -> Vec<String> {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Alignment {
+        Left,
+        Right,
+        None,
+    }
+    let alignments: Vec<Alignment> = datetime_items
+        .iter()
+        .map(|item| match item {
+            Item::Numeric(_, _) => Alignment::Right,
+            Item::Fixed(_) => Alignment::Left,
+            _ => Alignment::None,
+        })
+        .collect();
+
+    // All components go into one buffer; `ends` marks where each finishes.
+    let mut text = String::new();
+    let mut ends = Vec::with_capacity(entries.len() * datetime_items.len());
+    for entry in entries {
+        let datetime = local_datetime(entry.modified);
+        for item in datetime_items {
+            let _ = write!(
+                text,
+                "{}",
+                datetime.format_with_items(std::iter::once(item))
+            );
+            ends.push(text.len());
+        }
+    }
+    let component = |index: usize| {
+        let start = index.checked_sub(1).map_or(0, |previous| ends[previous]);
+        &text[start..ends[index]]
+    };
+
+    let mut widths = vec![0; datetime_items.len()];
+    for index in 0..ends.len() {
+        let column = index % datetime_items.len();
+        if alignments[column] != Alignment::None {
+            widths[column] = widths[column].max(UnicodeWidthStr::width(component(index)));
         }
     }
 
-    parts
-        .into_iter()
-        .map(|entry_parts| {
-            entry_parts
-                .iter()
-                .enumerate()
-                .map(|(index, part)| format_datetime_part(part, widths[index]))
-                .collect()
+    (0..entries.len())
+        .map(|entry_index| {
+            let mut formatted = String::new();
+            for column in 0..datetime_items.len() {
+                let value = component(entry_index * datetime_items.len() + column);
+                let padding = widths[column].saturating_sub(UnicodeWidthStr::width(value));
+                match alignments[column] {
+                    Alignment::Left => {
+                        formatted.push_str(value);
+                        push_spaces(&mut formatted, padding);
+                    }
+                    Alignment::Right => {
+                        push_spaces(&mut formatted, padding);
+                        formatted.push_str(value);
+                    }
+                    Alignment::None => formatted.push_str(value),
+                }
+            }
+            formatted
         })
         .collect()
 }
 
-fn format_datetime_part(part: &DateTimePart, width: usize) -> String {
-    match part.alignment {
-        DateTimePartAlignment::Left => pad_to_display_width(part.value.clone(), width),
-        DateTimePartAlignment::Right => format!(
-            "{}{}",
-            " ".repeat(width.saturating_sub(UnicodeWidthStr::width(part.value.as_str()))),
-            part.value
-        ),
-        DateTimePartAlignment::None => part.value.clone(),
-    }
-}
-
 fn print_long_titles(
+    out: &mut dyn Write,
     config: &Config,
-    prefix: &str,
-    fields: &[String],
-    widths: &std::collections::HashMap<String, usize>,
+    layout: &LongLayout<'_>,
 ) -> io::Result<()> {
+    let fields = layout.fields;
     let titles: Vec<String> = fields
         .iter()
         .enumerate()
-        .map(|(index, field)| {
-            let title = column_title(field);
-            let width = widths.get(field).copied().unwrap_or(0);
-            let padded = if index < fields.len() - 1 {
-                pad_to_display_width(title.to_string(), width)
+        .map(|(index, &field)| {
+            let title = field.title();
+            let padding = if index < fields.len() - 1 {
+                layout
+                    .width(field)
+                    .saturating_sub(UnicodeWidthStr::width(title))
             } else {
-                title.to_string()
+                0
             };
 
             format!(
-                "{}",
-                padded.color(config.display.get_long_format_title_color())
+                "{}{}",
+                config.theme.style("header").paint(title),
+                " ".repeat(padding)
             )
         })
         .collect();
 
-    print_line(format_args!("{}{}", prefix, titles.join("  ")))
-}
-
-fn column_title(field: &str) -> &str {
-    match field {
-        "git" => "Git",
-        "permissions" => "Permissions",
-        "nlink" => "Links",
-        "owner" => "Owner",
-        "group" => "Group",
-        "size" => "Size",
-        "modified" => "Modified",
-        "icon" => "Icon",
-        "filename" => "Name",
-        _ => field,
-    }
-}
-
-fn pad_to_display_width(value: String, width: usize) -> String {
-    let padding = width.saturating_sub(UnicodeWidthStr::width(value.as_str()));
-    format!("{value}{}", " ".repeat(padding))
+    print_line(
+        out,
+        format_args!(
+            "{}",
+            titles.join(&" ".repeat(config.display.column_spacing))
+        ),
+    )
 }

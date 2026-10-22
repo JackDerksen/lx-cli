@@ -25,6 +25,12 @@ pub struct Args {
     pub long: bool,
 
     #[arg(
+        long,
+        help = "Use directory contents totals for sizes and size sorting (scans all descendants)"
+    )]
+    pub total_size: bool,
+
+    #[arg(
         short = 'g',
         long,
         help = "Show Git status, including changes beneath directories"
@@ -300,5 +306,29 @@ mod tests {
         ] {
             assert!(Args::try_parse_from(arguments).is_err());
         }
+    }
+
+    #[test]
+    fn readme_examples_use_existing_flags() {
+        let mut in_shell_block = false;
+        let mut examples = 0;
+        for line in include_str!("../README.md").lines() {
+            if line.starts_with("```") {
+                in_shell_block = line == "```bash";
+                continue;
+            }
+            if !in_shell_block || !(line == "lx" || line.starts_with("lx ")) {
+                continue;
+            }
+            let command = line.split(['|', '#']).next().unwrap_or_default();
+            let arguments = command
+                .split_whitespace()
+                .map(|argument| argument.trim_matches('\''));
+            if let Err(error) = Args::try_parse_args_from(arguments) {
+                panic!("README example `{line}` does not parse: {error}");
+            }
+            examples += 1;
+        }
+        assert!(examples > 10, "README examples were not found");
     }
 }

@@ -2,21 +2,28 @@ use crate::config::Config;
 use crate::file_entry::{FileEntry, FileType};
 use crate::formatter::{entry_width, format_short_entry, print_line};
 use crate::sort::{SortOptions, sort_entries};
-use std::io;
+use std::io::{self, Write};
 
-pub fn format_short(entries: Vec<FileEntry>, config: &Config, sort: SortOptions) -> io::Result<()> {
-    format_short_with_max_rows(entries, config, config.display.max_rows, sort)
-}
-
-pub fn format_short_compact(
+pub fn format_short(
+    out: &mut dyn Write,
     entries: Vec<FileEntry>,
     config: &Config,
     sort: SortOptions,
 ) -> io::Result<()> {
-    format_short_with_max_rows(entries, config, config.display.compact_max_rows, sort)
+    format_short_with_max_rows(out, entries, config, config.display.max_rows, sort)
+}
+
+pub fn format_short_compact(
+    out: &mut dyn Write,
+    entries: Vec<FileEntry>,
+    config: &Config,
+    sort: SortOptions,
+) -> io::Result<()> {
+    format_short_with_max_rows(out, entries, config, config.display.compact_max_rows, sort)
 }
 
 fn format_short_with_max_rows(
+    out: &mut dyn Write,
     mut entries: Vec<FileEntry>,
     config: &Config,
     max_rows: usize,
@@ -31,6 +38,7 @@ fn format_short_with_max_rows(
             max_rows
         };
         return format_sorted_entries_with_max_rows(
+            out,
             entries,
             rows,
             config.display.column_spacing,
@@ -62,6 +70,7 @@ fn format_short_with_max_rows(
         return Ok(());
     }
     format_with_max_rows(
+        out,
         directories,
         executables,
         regular_files,
@@ -72,6 +81,7 @@ fn format_short_with_max_rows(
 }
 
 fn format_sorted_entries_with_max_rows(
+    out: &mut dyn Write,
     entries: Vec<FileEntry>,
     max_rows: usize,
     column_spacing: usize,
@@ -99,13 +109,14 @@ fn format_sorted_entries_with_max_rows(
         }
 
         if has_content {
-            print_line(format_args!("{}", line.trim_end()))?;
+            print_line(out, format_args!("{}", line.trim_end()))?;
         }
     }
     Ok(())
 }
 
 fn format_with_max_rows(
+    out: &mut dyn Write,
     directories: Vec<FileEntry>,
     executables: Vec<FileEntry>,
     regular_files: Vec<FileEntry>,
@@ -149,7 +160,7 @@ fn format_with_max_rows(
         }
 
         if has_any_content {
-            print_line(format_args!("{}", line.trim_end()))?;
+            print_line(out, format_args!("{}", line.trim_end()))?;
         }
     }
     Ok(())
